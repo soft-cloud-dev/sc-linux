@@ -1,0 +1,8 @@
+{
+  "distribution": "debian",
+  "release": "trixie",
+  "architecture": "x86-64",
+  "snapshot": "20261014T000000Z",
+  "mkosi_package": "25.3-7",
+  "seed": "f36b2c89-f125-52ac-ab2a-10c5cedfd1a6"
+}

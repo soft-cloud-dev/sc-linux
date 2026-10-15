@@ -1,0 +1,9 @@
+[Unit]
+Description=Generate unique SSH host keys on the deployed machine
+After=cloud-config.service
+Before=ssh.service
+
+[Service]
+Type=oneshot
+ExecStart=/usr/bin/ssh-keygen -A
+RemainAfterExit=yes

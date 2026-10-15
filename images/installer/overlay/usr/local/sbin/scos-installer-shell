@@ -1,0 +1,6 @@
+#!/bin/sh
+printf '\nSC Linux installer. No disk is selected automatically.\n'
+printf 'Use lsblk, then scos-install /dev/disk/by-id/YOUR-DISK.\n'
+printf 'The installer erases the entire selected disk after explicit confirmation.\n'
+printf 'SCOS_INSTALLER_READY\n'
+exec /bin/bash --noprofile --norc -i

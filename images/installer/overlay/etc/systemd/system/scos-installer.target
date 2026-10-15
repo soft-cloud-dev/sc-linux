@@ -1,0 +1,6 @@
+[Unit]
+Description=SC Linux local installation console
+DefaultDependencies=no
+Requires=sysinit.target basic.target
+After=sysinit.target basic.target
+Wants=scos-installer.service

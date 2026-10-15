@@ -1,0 +1,60 @@
+name: Build Linux
+on:
+  workflow_dispatch:
+    inputs:
+      reproducibility:
+        description: Compare two additional unsigned builds
+        type: boolean
+        default: false
+permissions:
+  contents: read
+concurrency:
+  group: sc-linux-build-${{ github.ref }}
+  cancel-in-progress: false
+jobs:
+  build:
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          persist-credentials: false
+      - name: Validate source and real CA
+        run: |
+          make check
+          python3 scripts/check.py --require-trust
+      - name: Build isolated toolchain
+        run: make builder
+      - name: Build RAW and installer ISO
+        run: make images
+      - name: Boot RAW clones and install from ISO
+        run: make smoke
+      - name: Compare independent unsigned builds
+        if: inputs.reproducibility
+        run: make repro
+      - name: Upload boot logs on failure
+        if: failure()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: failed-boot-logs
+          path: build/output/tests/
+          if-no-files-found: warn
+          retention-days: 7
+      - name: Upload tested development images
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: sc-linux-${{ github.sha }}
+          path: |
+            build/output/sc-linux.raw.zst
+            build/output/sc-linux.iso
+            build/output/SHA256SUMS
+            build/output/*.json
+            build/output/*.txt
+            build/output/*.tsv
+            build/output/raw/*.manifest
+            build/output/installer/*.manifest
+            build/output/tests/
+          if-no-files-found: error
+          compression-level: 0
+          retention-days: 7

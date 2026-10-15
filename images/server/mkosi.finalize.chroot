@@ -1,0 +1,36 @@
+#!/bin/sh
+# Finalize the reusable template before any host-specific provisioning occurs.
+set -eu
+
+update-ca-certificates
+passwd -l root
+
+# SSH must wait for freshly generated host keys on the deployed machine.
+mkdir -p /etc/systemd/system/ssh.service.d
+printf '[Unit]\nRequires=scos-hostkeys.service\nAfter=scos-hostkeys.service\n' \
+    > /etc/systemd/system/ssh.service.d/scos.conf
+ln -sfn /run/systemd/resolve/stub-resolv.conf /etc/resolv.conf
+
+systemctl enable \
+    systemd-networkd.service \
+    systemd-resolved.service \
+    systemd-timesyncd.service \
+    ssh.service \
+    scos-measure.service
+systemctl enable \
+    cloud-init-main.service \
+    cloud-init-local.service \
+    cloud-init-network.service \
+    cloud-config.service \
+    cloud-final.service
+
+# Template images must not contain credentials or identity from the build.
+rm -f /etc/ssl/private/ssl-cert-snakeoil.key /etc/ssl/certs/ssl-cert-snakeoil.pem
+rm -f /etc/ssh/ssh_host_* /etc/krb5.keytab /var/lib/systemd/random-seed
+rm -rf /var/lib/cloud/instances /var/lib/sss/db/* /var/lib/apt/lists/* /var/log/journal
+find /var/log -type f -exec truncate -s 0 {} +
+printf 'uninitialized\n' > /etc/machine-id
+rm -f /var/lib/dbus/machine-id
+
+PYTHONPATH=/usr/local/lib python3 -c 'from scos.core import check_tree; check_tree("/")'
+find /usr/local -type d -name __pycache__ -exec rm -rf {} +

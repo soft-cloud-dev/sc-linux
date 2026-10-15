@@ -1,0 +1,44 @@
+#!/usr/bin/python3
+"""Collect boot evidence for diagnosis; this is not remote attestation."""
+
+import argparse
+import hashlib
+import json
+import pathlib
+import subprocess
+import sys
+
+
+def main():
+    p = argparse.ArgumentParser(description=__doc__)
+    p.add_argument("output", type=pathlib.Path)
+    args = p.parse_args()
+    args.output.mkdir(parents=True, exist_ok=True, mode=0o700)
+    log = pathlib.Path(
+        "/sys/kernel/security/tpm0/binary_bios_measurements"
+    ).read_bytes()
+    if not log:
+        raise ValueError("TPM event log is empty")
+    (args.output / "eventlog.bin").write_bytes(log)
+    result = subprocess.check_output(["tpm2_pcrread", "sha256:0,2,4,7,11,12,13"])
+    (args.output / "pcrs.txt").write_bytes(result)
+    parsed = subprocess.check_output(
+        ["tpm2_eventlog", str(args.output / "eventlog.bin")]
+    )
+    (args.output / "eventlog.yaml").write_bytes(parsed)
+    record = {
+        "boot_id": pathlib.Path("/proc/sys/kernel/random/boot_id").read_text().strip(),
+        "machine_id": pathlib.Path("/etc/machine-id").read_text().strip(),
+        "eventlog_sha256": hashlib.sha256(log).hexdigest(),
+        "eventlog_bytes": len(log),
+        "authorization": "not-evaluated",
+    }
+    (args.output / "summary.json").write_text(json.dumps(record, indent=2) + "\n")
+    print("SCOS_BOOT_MEASURED " + json.dumps(record), flush=True)
+
+
+if __name__ == "__main__":
+    try:
+        main()
+    except (ValueError, OSError, subprocess.SubprocessError) as e:
+        sys.exit("scos-measure: " + str(e))

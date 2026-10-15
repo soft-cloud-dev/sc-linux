@@ -1,0 +1,156 @@
+#!/usr/bin/python3
+"""Install the bundled RAW image onto an explicitly selected, unmounted disk."""
+
+import argparse
+import hashlib
+import json
+import os
+import pathlib
+import stat
+import subprocess
+import sys
+
+sys.path.insert(0, "/usr/local/lib")
+from scos.core import verify_file
+
+
+def validate_disk(info, target, required_bytes):
+    """Reject unsafe targets, inspecting every partition and mapped child."""
+    if info.get("path") != target or info.get("type") != "disk":
+        raise ValueError("Target must be the selected whole disk")
+    if info.get("ro") or int(info.get("size", 0)) < required_bytes:
+        raise ValueError("Target is read-only or too small")
+    pending = [info]
+    while pending:
+        item = pending.pop()
+        if any(item.get("mountpoints") or []) or item.get("mountpoint"):
+            raise ValueError(
+                "Target or one of its children is mounted (including swap)"
+            )
+        if item is not info and item.get("type") not in ("part",):
+            raise ValueError("Target has an active mapped device; deactivate it first")
+        pending.extend(item.get("children") or [])
+    return target
+
+
+def disk_info(target):
+    result = subprocess.check_output(
+        [
+            "lsblk",
+            "--json",
+            "--bytes",
+            "--paths",
+            "--output",
+            "PATH,TYPE,SIZE,RO,MOUNTPOINTS",
+            target,
+        ],
+        text=True,
+    )
+    items = json.loads(result)["blockdevices"]
+    if len(items) != 1:
+        raise ValueError("Ambiguous block device")
+    return items[0]
+
+
+def stream_image(payload, sink=None):
+    """Hash the entire decompressed payload, optionally writing the same stream."""
+    digest = hashlib.sha256()
+    size = 0
+    with subprocess.Popen(
+        ["zstd", "-dc", "--", str(payload)], stdout=subprocess.PIPE
+    ) as proc:
+        for data in iter(lambda: proc.stdout.read(4 * 1024 * 1024), b""):
+            digest.update(data)
+            size += len(data)
+            if sink is not None:
+                sink.write(data)
+        if proc.wait() != 0:
+            raise ValueError("Payload decompression failed")
+    return {"size": size, "sha256": digest.hexdigest()}
+
+
+def verify_readback(disk, expected):
+    """Check the written image prefix; a larger target may have unused space."""
+    disk.seek(0)
+    digest = hashlib.sha256()
+    remaining = expected["size"]
+    while remaining:
+        data = disk.read(min(4 * 1024 * 1024, remaining))
+        if not data:
+            raise ValueError("Short read verifying installed disk")
+        digest.update(data)
+        remaining -= len(data)
+    if digest.hexdigest() != expected["sha256"]:
+        raise ValueError("Disk readback mismatch")
+
+
+def write_image(payload, target, expected):
+    """Open the selected disk exclusively, stream the image, and verify readback."""
+    expected_device = os.stat(target).st_rdev
+    fd = os.open(target, os.O_RDWR | os.O_EXCL | os.O_CLOEXEC)
+    with os.fdopen(fd, "r+b", buffering=0) as disk:
+        if (
+            not stat.S_ISBLK(os.fstat(fd).st_mode)
+            or os.fstat(fd).st_rdev != expected_device
+        ):
+            raise ValueError("Block device changed during confirmation")
+        print("Writing and verifying the installed image...", flush=True)
+        if stream_image(payload, disk) != expected:
+            raise ValueError("Write stream mismatch")
+        os.fsync(fd)
+        verify_readback(disk, expected)
+    subprocess.run(["sgdisk", "-e", target], check=True)
+    subprocess.run(["sync"], check=True)
+
+
+def main():
+    p = argparse.ArgumentParser(description=__doc__)
+    p.add_argument("disk", help="A whole disk, preferably /dev/disk/by-id/...")
+    args = p.parse_args()
+    if os.geteuid() != 0 or not sys.stdin.isatty():
+        raise ValueError("Root and an interactive console are required")
+    target = str(pathlib.Path(args.disk).resolve(strict=True))
+    if not stat.S_ISBLK(os.stat(target).st_mode):
+        raise ValueError("Not a block device")
+    manifest = json.loads(
+        pathlib.Path("/usr/local/share/scos/payload.json").read_text()
+    )
+    validate_disk(disk_info(target), target, manifest["raw"]["size"])
+    media = pathlib.Path("/run/scos-media")
+    media.mkdir(parents=True, exist_ok=True)
+    subprocess.run(
+        [
+            "mount",
+            "-o",
+            "ro,nodev,nosuid,noexec",
+            "/dev/disk/by-label/SCOS_INSTALL",
+            str(media),
+        ],
+        check=True,
+    )
+    try:
+        payload = media / "sc-linux.raw.zst"
+        verify_file(payload, manifest["compressed"])
+        print(
+            "Checking the complete uncompressed payload before touching the disk...",
+            flush=True,
+        )
+        if stream_image(payload) != manifest["raw"]:
+            raise ValueError("Uncompressed payload mismatch")
+        print("ALL DATA ON " + target + " WILL BE OVERWRITTEN.", flush=True)
+        confirmation = input("Type ERASE " + target + " to continue: ")
+        if confirmation != "ERASE " + target:
+            raise ValueError("Installation cancelled")
+        validate_disk(disk_info(target), target, manifest["raw"]["size"])
+        write_image(payload, target, manifest["raw"])
+        print("SCOS_INSTALL_COMPLETE", flush=True)
+        print("Remove installation media, attach the per-host seed, and reboot.")
+    finally:
+        subprocess.run(["umount", str(media)], check=True)
+
+
+if __name__ == "__main__":
+    try:
+        main()
+    except (ValueError, OSError, subprocess.SubprocessError, KeyError) as e:
+        sys.exit("scos-install: " + str(e))

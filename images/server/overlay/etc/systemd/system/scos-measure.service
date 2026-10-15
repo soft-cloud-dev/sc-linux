@@ -1,0 +1,14 @@
+[Unit]
+Description=Record measured-boot diagnostics (not remote attestation)
+After=systemd-udev-trigger.service local-fs.target
+ConditionPathExists=/sys/class/tpm/tpm0
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/sbin/scos-measure /run/scos/boot
+StandardOutput=journal+console
+StandardError=journal+console
+UMask=0077
+
+[Install]
+WantedBy=multi-user.target

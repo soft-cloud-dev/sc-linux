@@ -1,0 +1,109 @@
+#!/usr/bin/python3
+"""Enroll this host using the native IPA interactive OTP prompt."""
+
+import argparse
+import configparser
+import fcntl
+import os
+import pathlib
+import subprocess
+import sys
+import tempfile
+
+sys.path.insert(0, "/usr/local/lib")
+from scos.core import read_identity, verify_ca, enrollment_command
+
+
+def verify_configuration(path, identity):
+    cfg = configparser.ConfigParser(interpolation=None)
+    cfg.read(path)
+    if not cfg.has_section("global"):
+        raise ValueError("IPA configuration has no global section")
+    if (
+        cfg["global"].get("realm") != identity["realm"]
+        or cfg["global"].get("domain") != identity["domain"]
+    ):
+        raise ValueError(
+            "Existing IPA configuration does not match the explicit identity contract"
+        )
+
+
+def verify_enrollment(identity, hostname):
+    verify_configuration("/etc/ipa/default.conf", identity)
+    if not pathlib.Path("/etc/krb5.keytab").is_file():
+        raise ValueError(
+            "Partial enrollment: host keytab is absent; reconcile before retrying"
+        )
+    with tempfile.TemporaryDirectory(prefix="scos-krb5-", dir="/run") as work:
+        env = os.environ | {"KRB5CCNAME": "FILE:" + work + "/ccache"}
+        try:
+            subprocess.run(
+                [
+                    "kinit",
+                    "-k",
+                    "-t",
+                    "/etc/krb5.keytab",
+                    "host/" + hostname + "@" + identity["realm"],
+                ],
+                env=env,
+                check=True,
+            )
+            subprocess.run(["sssctl", "config-check"], check=True)
+        finally:
+            subprocess.run(
+                ["kdestroy"],
+                env=env,
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL,
+            )
+    print(
+        "Host keytab and SSSD configuration verified. Test HBAC and sudo policy separately."
+    )
+
+
+def main():
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument(
+        "hostname", help="Inventory-assigned FQDN, not the IPA server name"
+    )
+    args = parser.parse_args()
+    if os.geteuid() != 0:
+        raise ValueError("Run as root")
+    identity = read_identity("/usr/local/share/scos/identity.json")
+    ca = "/usr/local/share/ca-certificates/scos-ipa.crt"
+    verify_ca(ca, pathlib.Path("/usr/local/share/scos/ipa-ca.sha256").read_text())
+    command = enrollment_command(identity, args.hostname, ca)
+    lockfd = os.open("/run/lock/scos-enroll.lock", os.O_CREAT | os.O_RDWR, 0o600)
+    with os.fdopen(lockfd, "w") as lock:
+        fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
+        exists = pathlib.Path("/etc/ipa/default.conf").exists()
+        if exists:
+            verify_enrollment(identity, args.hostname)
+            return
+        if pathlib.Path("/etc/krb5.keytab").exists():
+            raise ValueError(
+                "Partial or foreign enrollment found; no automatic force-join"
+            )
+        if not sys.stdin.isatty():
+            raise ValueError(
+                "Use a trusted interactive terminal; no OTP in arguments or CI"
+            )
+        synchronized = subprocess.check_output(
+            ["timedatectl", "show", "-p", "NTPSynchronized", "--value"], text=True
+        ).strip()
+        if synchronized != "yes":
+            raise ValueError("Synchronize the clock before enrollment (timedatectl)")
+        subprocess.run(["ssh-keygen", "-A"], check=True)
+        print(
+            "Use only the one-time enrollment password issued for this host after your admission checks."
+        )
+        subprocess.run(command, check=True)
+        verify_enrollment(identity, args.hostname)
+
+
+if __name__ == "__main__":
+    try:
+        main()
+    except (ValueError, OSError, subprocess.SubprocessError) as e:
+        print("scos-enroll: " + str(e), file=sys.stderr)
+        sys.exit(1)
