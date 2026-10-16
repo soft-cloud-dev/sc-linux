@@ -33,6 +33,17 @@ class ImageSizeConfigurationTests(unittest.TestCase):
             (ROOT / "images/server/overlay/usr/lib/repart.d/50-root.conf").is_file()
         )
 
+
+    def test_finalizers_do_not_require_apt_binary(self):
+        for image in ("server", "installer"):
+            with self.subTest(image=image):
+                script = (
+                    ROOT / "images" / image / "mkosi.finalize.chroot"
+                ).read_text()
+                self.assertNotIn("apt-get clean", script)
+                self.assertIn("rm -f /var/cache/apt/archives/*.deb", script)
+                self.assertIn("rm -rf /var/lib/apt/lists/*", script)
+
     def test_compression_and_report_generation(self):
         build = (ROOT / "scripts/build-inside.sh").read_text()
         self.assertIn("zstd -T1 -19 --no-progress", build)

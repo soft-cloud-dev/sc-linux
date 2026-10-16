@@ -1,7 +1,8 @@
 #!/bin/sh
 set -eu
 
-apt-get clean
+# mkosi's APT tooling runs outside this minimal installer filesystem.
+rm -f /var/cache/apt/archives/*.deb
 rm -rf /var/lib/apt/lists/*
 find /usr -type d -name __pycache__ -prune -exec rm -rf {} +
 find /usr -type f -name '*.pyc' -delete
