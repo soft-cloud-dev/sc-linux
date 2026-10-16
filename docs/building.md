@@ -1,10 +1,10 @@
 # Build your first image
 
-For an interactive, chapter-by-chapter explanation of the complete image factory, use the [SC Linux Jupyter Book](../book/index.md). The book separates environment checks, version pins, trust, filesystem staging, mkosi image construction, packaging, checksum verification and VM testing. The actual CI image pipeline remains the canonical source of build behavior.
-
 [Home](../README.md) · [Install](installing.md) · [Verification](verification.md)
 
 This guide builds **two files from one server definition**: a compressed RAW disk for a hypervisor, and an ISO that installs the same disk image.
+
+For an interactive walkthrough, use the [SC Linux Jupyter Book](../book/index.md). The [notebook guide](notebooks.md) covers local setup and the shorter operational walkthrough.
 
 ## Before you start
 
@@ -54,7 +54,7 @@ For a second build, provide a different destination:
 bash scripts/build.sh build/run-02
 ```
 
-For a cell-by-cell build in JupyterLab, activate your JupyterLab virtual environment and run `make lab`. Open `02-build.ipynb` from `build/notebooks/`. Working copies are Git-ignored so saved notebook outputs cannot violate the clean-tree build requirement.
+For a cell-by-cell build, follow the [notebook setup guide](notebooks.md#set-up-jupyterlab) and open `02-build.ipynb` in JupyterLab.
 
 ## 4. Inspect and boot-test
 

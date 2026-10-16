@@ -19,7 +19,7 @@ For level 1 you can also open [`01-validate.ipynb`](../notebooks/01-validate.ipy
 bash scripts/notebook.sh notebooks/check.ipynb --require-trust
 ```
 
-This deliberately fails if the repository does not contain a reviewed public IPA CA certificate and matching independent fingerprint. Never bypass it with a placeholder certificate.
+This fails if the required public IPA CA is absent or fails certificate and fingerprint validation. It cannot establish that an independent trust review took place: the operator must verify the fingerprint through a trusted channel before building. Never bypass the preflight with a placeholder certificate.
 
 ## After a successful build
 
@@ -31,6 +31,14 @@ Run `make smoke` and inspect `build/output/tests/` and `smoke.json`. Root growth
 
 ## Work not proven by source tests
 
-The migration itself does **not** establish successful Docker/mkosi image construction, VM boots, actual FreeIPA enrollment, Secure Boot enforcement, root integrity, remote attestation, or reproducible builds. GitHub Actions **Validate** runs source checks on pushes and pull requests. **Build Linux** is a privileged, manual workflow on `main` that requires the real CA and an operator review.
+Source checks do **not** establish successful Docker/mkosi image construction, VM boots, actual FreeIPA enrollment, Secure Boot enforcement, root integrity, remote attestation, or reproducible builds.
+
+| GitHub Actions workflow | Trigger | Purpose |
+| --- | --- | --- |
+| **Validate** | Push, pull request or manual dispatch | Run `make check` |
+| **Jupyter Book** | Push, pull request or manual dispatch | Render static HTML in strict mode without executing cells |
+| **Build Linux** | Manual dispatch on `main` | Build images and run VM acceptance; optionally compare unsigned builds |
+
+**Build Linux** uses privileged containers and requires the real CA and an operator trust review.
 
 Report test outcomes for the exact commit and artifact. Do not label the project production-ready on source-test evidence alone.

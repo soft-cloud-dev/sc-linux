@@ -8,40 +8,38 @@ SC Linux keeps the *build environment* separate from the *installed operating sy
 
 | Path | Purpose |
 | --- | --- |
-| `notebooks/01-*` through `04-*` | Guided, interactive workflow |
-| `notebooks/*.ipynb` | Executable host-side validation, staging, image packaging and tests |
+| `book/` | Nine-chapter teaching sequence and book reference |
+| `docs/` | Task guides and historical change records |
+| `notebooks/01-*` through `04-*` | Compact, interactive workflow |
+| Named `notebooks/*.ipynb` | Canonical host-side validation, staging, image packaging and tests |
 | `scripts/notebook.sh` | Execute the same notebook code noninteractively in CI |
 | `scripts/*.sh` | Docker, mkosi and reproducibility orchestration |
 | `config/` | Version pins and FreeIPA identity |
 | `images/server/` | Server mkosi recipe, partition layout and system files |
 | `images/installer/` | Installer UKI recipe, units and disk installer |
-| `lib/scos/core.py` | Small **runtime** library used by installed commands |
+| `lib/scos/core.py` | Validation helpers shared by host operations and installed commands |
 | `tests/` | Python unit tests for safety and compatibility |
 | `trust/` | Operator-reviewed public IPA CA certificate |
-| `build/` | Ignored images, metadata and VM logs |
+| `build/` | Ignored images, metadata, VM logs and notebook working copies |
 
-**Why some .py files remain:** installed programs still use Python. A deployed node must not need Jupyter. Python unit tests also remain importable; host utility entrypoints moved to notebooks.
+The [notebook guide](notebooks.md) explains the teaching, operational and implementation layers. Installed programs and unit tests use ordinary Python files and run without Jupyter.
 
 ## The build sequence
 
-```text
-config + verified public CA
-        |
-  check.ipynb
-        |
-  prepare.ipynb  -> server/installer overlay and apt snapshot
-        |
-  mkosi server   -> sc-linux.raw
-        |               |
-      zstd          payload digests
-        |               |
-        +-------> mkosi installer -> UKI
-                            |
-                     make-iso.ipynb -> sc-linux.iso
-                            |
-                  artifacts / footprint notebooks
-                            |
-                     smoke.ipynb -> VM evidence
+```mermaid
+flowchart TD
+    inputs["Configuration and verified public CA"] --> check["Source checks"]
+    check --> stage["Stage overlays and apt snapshot"]
+    stage --> raw["Build server RAW"]
+    raw --> compress["Compress RAW"]
+    raw --> digests["Calculate payload digests"]
+    compress --> digests
+    digests --> installer["Build installer UKI"]
+    installer --> iso["Assemble installer ISO"]
+    compress --> iso
+    compress --> reports["Artifact hashes and size reports"]
+    iso --> reports
+    reports --> smoke["VM smoke tests"]
 ```
 
 The source tree is mounted read-only into a privileged builder container, then copied into a temporary workspace. Metadata records the committed source revision and timestamp. The installer includes both the compressed RAW and expected payload digests.

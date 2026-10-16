@@ -1,15 +1,12 @@
 # SC Linux
 
-A small **Debian 13 (Trixie) amd64** server image, built with **mkosi 25.3-7**. One build produces a compressed bootable disk image and an installer ISO. FreeIPA enrollment happens **after** each host is provisioned.
+A Debian 13 (`amd64`) server image built with mkosi. One build produces a compressed UEFI disk image and an installer ISO. Hosts are provisioned with cloud-init and enrolled in FreeIPA after installation.
 
-**Status:** development. Source checks, image construction, VM boot and real FreeIPA enrollment are separate acceptance stages. Do not assume a successful source check means an image was tested.
+**Development status:** source checks, image builds, VM boot tests and live FreeIPA enrollment are separate verification stages. See [verification](docs/verification.md) for what each stage proves.
 
-## Get started
+## Start here
 
-1. Clone the repository and run source checks.
-2. Independently verify the fingerprint of the checked-in public FreeIPA CA, or replace it with your own reviewed CA.
-3. Commit any configuration or trust changes.
-4. Build the images and run the disposable VM tests.
+Clone the repository and validate the source. These checks need Python 3.11+, Git, Make, Bash and OpenSSL; they do not need Docker or Jupyter.
 
 ```sh
 git clone https://github.com/soft-cloud-dev/sc-linux.git
@@ -17,64 +14,7 @@ cd sc-linux
 make check
 ```
 
-The build requires an **amd64 Linux** machine with Docker, Git, Make, OpenSSL and at least **40 GiB free**. It uses privileged containers. Follow [the build guide](docs/building.md) before running it.
-
-## Guided Jupyter Book: build an OS step by step
-
-The [SC Linux build book](book/index.md) separates the workflow into nine self-contained chapters: host prerequisites, image configuration, CA trust, builder, image construction, checksums/footprint, QEMU boot, host seed and reproducibility.
-
-Read the chapters on GitHub or open working copies in JupyterLab with `make book-lab`.
-
-Install the optional documentation tools in a development virtual environment:
-
-```sh
-python3 -m venv .venv
-. .venv/bin/activate
-python -m pip install -r requirements-book.txt jupyterlab
-make book
-make book-lab
-```
-
-`make book` renders HTML in strict mode without running image-build cells. The book's code cells run local commands and some build privileged Docker images; the public HTML book must **not** execute them. To render the site, install Jupyter Book 2 and use `make book-html` (without `--execute`). The installed OS never includes Jupyter.
-
-## Learn and operate through notebooks
-
-Open [`notebooks/`](notebooks) in JupyterLab, starting Jupyter from the repository root:
-
-| Start here | What you will do |
-| --- | --- |
-| [01 · Validate](notebooks/01-validate.ipynb) | Check configuration and run tests |
-| [02 · Build](notebooks/02-build.ipynb) | Review inputs and generate RAW + ISO |
-| [03 · Inspect](notebooks/03-inspect.ipynb) | Verify hashes, compare sizes |
-| [04 · Smoke-test](notebooks/04-smoke.ipynb) | Boot test VMs and review evidence |
-
-The **actual host-side operations** also live in notebooks: [check](notebooks/check.ipynb), [trust](notebooks/trust.ipynb), [prepare](notebooks/prepare.ipynb), [make-iso](notebooks/make-iso.ipynb), [artifacts](notebooks/artifacts.ipynb), [footprint](notebooks/footprint.ipynb), [seed](notebooks/seed.ipynb), and [smoke](notebooks/smoke.ipynb).
-
-You **do not need Jupyter installed to use CI or the Makefile**. Execute any operation with the minimal, Python-standard-library runner:
-
-```sh
-bash scripts/notebook.sh notebooks/check.ipynb
-make check
-```
-
-The notebook is the executable source. The runner evaluates its Python cells in order; it does not execute Markdown or install dependencies. JupyterLab is an optional interface, not part of the deployed OS.
-
-## Open notebooks interactively
-
-JupyterLab is needed only when you want to **explore cells interactively**. Install it in a local development environment, not in the built OS:
-
-```sh
-python3 -m venv .venv
-. .venv/bin/activate
-python -m pip install jupyterlab
-make lab
-```
-
-Run `make lab`, then open `01-validate.ipynb`. This creates **working copies** of the notebooks in ignored `build/notebooks/`, so Jupyter autosave and execution outputs cannot dirty the committed source or block image builds. Repeated launches preserve these copies. To contribute changes, deliberately copy the edited notebook back into `notebooks/`, clear its cell outputs, and commit it. CI and command-line builds continue to use the committed notebooks through `make` and `scripts/notebook.sh`.
-
-## Build and test
-
-After configuring verified CA trust and committing your changes:
+To build images, use an **amd64 Linux host** with Docker and at least **40 GiB free**. Follow the [build guide](docs/building.md) to review configuration, independently verify the public FreeIPA CA and commit your changes before building. Builds use privileged containers.
 
 ```sh
 make builder
@@ -82,8 +22,36 @@ make images
 make smoke
 ```
 
-Expected outputs in `build/output/`: `sc-linux.raw.zst`, `sc-linux.iso`, `SHA256SUMS`, `artifacts.json`, `footprint.json`, package manifests, and VM logs after smoke testing.
+The main outputs are `build/output/sc-linux.raw.zst` and `build/output/sc-linux.iso`, accompanied by checksums, size reports and VM logs. See the [output reference](docs/building.md#4-inspect-and-boot-test).
 
-For a step-by-step explanation see [Build](docs/building.md), [Install](docs/installing.md), [Identity](docs/identity.md), [Architecture](docs/architecture.md), [Footprint](docs/footprint.md), and [Verification](docs/verification.md).
+## Choose a workflow
 
-**Scope:** UEFI, systemd, cloud-init NoCloud, SSH and native FreeIPA client. Signing is optional. The repository does **not** implement authenticated root, remote attestation, automatic updates, Kubernetes orchestration, or a FreeBSD image. Read [Security](SECURITY.md) before deploying.
+| Goal | Start here |
+| --- | --- |
+| Build from the command line | [Build guide](docs/building.md) |
+| Learn the build step by step | [Nine-chapter Jupyter Book](book/index.md) |
+| Run or edit notebooks locally | [Notebook guide](docs/notebooks.md) |
+| Install a machine and configure SSH | [Installation guide](docs/installing.md) |
+| Configure CA trust and enroll a host | [FreeIPA identity](docs/identity.md) |
+| Understand or change the implementation | [Architecture](docs/architecture.md) · [Contributing](CONTRIBUTING.md) |
+
+Jupyter is optional. Make and CI execute the canonical operation notebooks through a Python-standard-library runner. The installed OS does not include Jupyter.
+
+## Commands
+
+| Command | Purpose |
+| --- | --- |
+| `make` | Show available commands |
+| `make check` | Run unit tests and source checks |
+| `make builder` | Create the Docker build toolchain |
+| `make images` | Build the RAW disk and installer ISO |
+| `make smoke` | Boot RAW clones, install the ISO and boot the result |
+| `make repro` | Compare two fresh unsigned builds byte for byte |
+| `make lab` / `make book-lab` | Open operational notebooks / book chapters |
+| `make book` | Render the book in strict mode without executing cells |
+
+## Scope
+
+The image includes systemd, cloud-init NoCloud, SSH and a native FreeIPA client. EFI signing is optional. Authenticated root, remote attestation, automatic updates, Kubernetes orchestration and FreeBSD images are not implemented.
+
+Read [Security](SECURITY.md) before deployment. The [documentation index](docs/README.md) also covers image size, upstream references and historical changes.

@@ -1,5 +1,7 @@
 # Notebook-first source migration — 2026-10-16
 
+**Historical record:** this describes the notebook-migration revision. The later nine-chapter book is documented in the [notebook guide](../notebooks.md). Use [verification](../verification.md) for current acceptance stages.
+
 ## What changed
 
 Eight host-side Python operations moved from `scripts/*.py` to executable `notebooks/*.ipynb`. The notebook cells are the canonical implementation, not a wrapper that imports deleted scripts. A Python-standard-library runner (`scripts/notebook.sh`) runs those same cells inside Docker and in CI, without requiring an interactive Jupyter server.

@@ -1,5 +1,7 @@
 # Repository readability rewrite
 
+**Historical record:** this describes the readability-rewrite revision. Its test counts and trust-file state are not the current project status. Use the [documentation index](../README.md) for current guides and [verification](../verification.md) for acceptance stages.
+
 ## Goal and scope
 
 Make the supplied image factory easy to navigate, operate, and maintain.
