@@ -6,9 +6,9 @@ SC Linux builds a Debian 13 (`amd64`) UEFI server disk and an installer ISO usin
 
 ## How to use this book
 
-Follow the eight chapters in the left navigation. Each executable chapter has the same flow: **Goal → Prerequisites → Action → Check → Next**. Execute the code cells **locally in JupyterLab**, not on a public website. Notebook actions may access Docker, build privileged images or modify local outputs.
+Follow the nine chapters in the left navigation. Each executable chapter has the same flow: **Goal → Prerequisites → Action → Check → Next**. Execute the code cells **locally in JupyterLab**, not on a public website. Use `make book-lab` for ignored working copies, so notebook autosaves cannot dirty the committed source. Notebook actions may access Docker, build privileged images or modify local outputs.
 
-The book itself is **documentation, not a build orchestrator**. Generate documentation with `jupyter book build --html` **without `--execute`**. The existing `make` and `notebooks/*.ipynb` commands remain the canonical automation and CI implementation.
+The book is a **guided operator interface** to the tested build pipeline, not a second implementation. Generate documentation with `jupyter book build --html` **without `--execute`**. The existing `make` and `notebooks/*.ipynb` commands remain the canonical automation and CI implementation.
 
 ## Safety and reproducibility
 
