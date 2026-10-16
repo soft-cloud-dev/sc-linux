@@ -1,12 +1,14 @@
 .DEFAULT_GOAL := help
-.PHONY: help check builder images smoke repro lab book
+.PHONY: help check builder images smoke repro lab book-html book-lab book
 
 help:
 	@printf '%s\n' \
 	  'SC Linux image factory' \
 	  '' \
 	  '  make check    Run unit tests, source checks, and shell syntax checks' \
-	  '  make lab      Open JupyterLab working copies' \
+	  '  make lab      Open operational notebooks in JupyterLab' \
+	  '  make book-lab Open guided book chapters in JupyterLab' \
+	  '  make book-html Render the Jupyter Book site without execution' \
 	  '  make book     Build the static Jupyter Book without executing cells' \
 	  '  make builder  Build the pinned Docker toolchain' \
 	  '  make images   Build the RAW disk and UEFI installer ISO' \
@@ -37,6 +39,12 @@ repro:
 
 lab:
 	bash scripts/lab.sh
+
+book-lab:
+	bash scripts/book-lab.sh
+
+book-html:
+	jupyter book build --html
 
 book:
 	jupyter book build --html --strict
