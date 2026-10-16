@@ -17,6 +17,7 @@ and FreeIPA enrollment credentials.
 | Task | Guide |
 | --- | --- |
 | Build the RAW image and installer ISO | [Building](docs/building.md) |
+| Understand image-size tradeoffs | [Footprint](docs/footprint.md) |
 | Install a machine and configure SSH access | [Installation](docs/installing.md) |
 | Configure trust and enroll in FreeIPA | [Identity](docs/identity.md) |
 | Understand the image layout and build flow | [Architecture](docs/architecture.md) |
@@ -47,6 +48,7 @@ All final outputs go to `build/output/` by default.
 | `sc-linux.raw.zst` | Compressed GPT disk image for direct deployment |
 | `sc-linux.iso` | UEFI installer containing the same disk image |
 | `SHA256SUMS`, `artifacts.json` | Artifact checksums and sizes |
+| `footprint.json` | RAW/ISO byte counts and top installed package sizes |
 | Manifests and metadata | Package versions, source commit, and builder identity |
 | `tests/` | Boot logs and results after a smoke-test run |
 

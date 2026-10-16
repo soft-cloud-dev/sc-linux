@@ -37,7 +37,7 @@ mkosi -C images/server \
     --seed="$partition_seed" \
     "${signing_arguments[@]}" build
 test -s /out/raw/sc-linux.raw
-zstd -T1 -10 --no-progress /out/raw/sc-linux.raw -o /out/sc-linux.raw.zst
+zstd -T1 -19 --no-progress /out/raw/sc-linux.raw -o /out/sc-linux.raw.zst
 
 # Embed the expected payload digest in the installer before building its UKI.
 PYTHONPATH=lib python3 - <<'PY'
@@ -63,6 +63,7 @@ python3 scripts/make-iso.py \
     /out/installer/sc-linux-installer.efi /out/sc-linux.raw.zst /out/sc-linux.iso
 
 python3 scripts/artifacts.py /out
+python3 scripts/footprint.py /out
 cp config/build.json /out/build-config.json
 dpkg-query -W -f='${binary:Package}\t${Version}\n' > /out/builder-packages.tsv
 printf '%s\n' "$SOURCE_COMMIT" > /out/source-commit.txt

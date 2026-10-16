@@ -33,4 +33,18 @@ printf 'uninitialized\n' > /etc/machine-id
 rm -f /var/lib/dbus/machine-id
 
 PYTHONPATH=/usr/local/lib python3 -c 'from scos.core import check_tree; check_tree("/")'
-find /usr/local -type d -name __pycache__ -exec rm -rf {} +
+# Drop disposable package caches and compiled Python artifacts.
+apt-get clean
+find /usr -type d -name __pycache__ -prune -exec rm -rf {} +
+find /usr -type f -name '*.pyc' -delete
+
+# Export reports to mkosi output staging, not the deployed root filesystem.
+: "${CHROOT_OUTPUTDIR:?mkosi output staging unavailable}"
+dpkg-query -W -f='${Installed-Size}\t${binary:Package}\n' |
+    LC_ALL=C sort -k1,1nr -k2,2 > "$CHROOT_OUTPUTDIR/sc-linux.packages-kib.tsv"
+for directory in /usr /etc /var /boot /efi /opt; do
+    if [ -d "$directory" ]; then
+        du -sx -B1 "$directory"
+    fi
+done | LC_ALL=C sort -k1,1nr -k2,2 \
+    > "$CHROOT_OUTPUTDIR/sc-linux.directories-bytes.tsv"
