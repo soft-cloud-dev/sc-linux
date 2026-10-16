@@ -44,6 +44,20 @@ class BootReportTests(unittest.TestCase):
             with self.assertRaises(ValueError):
                 SMOKE.read_boot_report(path)
 
+    def test_installed_root_growth_guard(self):
+        threshold = 6 * 1024**3
+        self.assertEqual(
+            SMOKE.verify_installed_root_size(
+                {"root_filesystem_bytes": threshold}
+            ),
+            threshold,
+        )
+        for record in ({}, {"root_filesystem_bytes": threshold - 1},
+                       {"root_filesystem_bytes": str(threshold)},
+                       {"root_filesystem_bytes": True}):
+            with self.subTest(record=record), self.assertRaises(ValueError):
+                SMOKE.verify_installed_root_size(record)
+
     def test_raw_boot_has_dedicated_virtio_serial_channel(self):
         cmd = SMOKE.qemu_command(
             Path("/tmp/disk.qcow2"), Path("/tmp/code.fd"),

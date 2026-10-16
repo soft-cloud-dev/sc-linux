@@ -15,7 +15,7 @@ too. The uncompressed disk size is not the installed package size.
 | `WithDocs=no` | Do not install optional package docs/man pages; preserve copyright files |
 | 384 MiB ESP | Fixed UEFI partition; must still fit the complete UKI |
 | 2 GiB root minimum | `Minimize=guess` measures space required for the copied root |
-| Repart policy | `systemd-repart` plus `/usr/lib/repart.d/50-root.conf` target first-boot growth |
+| Root growth | `systemd-repart` partition resize followed by `scos-grow-root.service` for ext4 growth |
 | Postinstall cleanup | Remove disposable apt lists/logs and Python bytecode, not SSSD runtime dependencies |
 | `zstd -T1 -19` | Compress the distributable RAW; single-threaded for deterministic parameters |
 
@@ -55,15 +55,17 @@ packages on the deployed machine.
 
 1. Confirm the RAW and ISO are built successfully from the pinned snapshot.
 2. Record the exact values in `footprint.json`; compare baseline and candidate.
-3. Run `make smoke` to boot the two RAW clones and install/boot from ISO.
-4. Independently verify the root partition and ext4 filesystem grow to fill
-   an 8 GiB installed disk, and that a subsequent reboot stays healthy.
+3. Run `make smoke` to boot two RAW clones, install and boot from ISO, and
+   assert that the installed root filesystem grew beyond 6 GiB on an 8 GiB disk.
+4. Inspect root partition dimensions and verify a subsequent reboot stays
+   healthy; the smoke harness checks filesystem capacity, not partition extents.
 5. Run `make repro` for the exact unsigned candidate before declaring
    byte-level reproducibility.
 
-The existing smoke suite does not yet assert disk growth. Build acceptance
-and growth remain unverified until explicitly tested. An ESP allocation
-change also requires verifying enough room for the generated and future UKI.
+The source tests verify smoke assertions but do not boot an OS. Image-build
+acceptance and root growth remain unverified until the manual Build Linux
+workflow is run on this branch. The ESP allocation change also requires
+confirming room for the current and future UKI.
 
 Compression level 19 is a tradeoff: it spends additional builder CPU time
 to reduce distribution bytes. Benchmark this against the baseline `-10`.

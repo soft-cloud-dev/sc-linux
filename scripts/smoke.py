@@ -42,6 +42,14 @@ def validate_measurement(record):
     return record
 
 
+def verify_installed_root_size(record, minimum_bytes=6 * 1024**3):
+    """Reject installed VMs whose root filesystem failed to occupy the disk."""
+    size = record.get("root_filesystem_bytes")
+    if type(size) is not int or size < minimum_bytes:
+        raise ValueError("Installed root filesystem did not grow to the target disk")
+    return size
+
+
 def wait_path(path, proc, seconds=10):
     deadline = time.monotonic() + seconds
     while not path.exists():
@@ -245,7 +253,9 @@ def main():
         boot(
             target, logs / "iso-install.log", iso=output / "sc-linux.iso", timeout=1800
         )
-        records.append(boot(target, logs / "installed-boot.log"))
+        installed = boot(target, logs / "installed-boot.log")
+        verify_installed_root_size(installed)
+        records.append(installed)
         if len({r["machine_id"] for r in records}) != 3:
             raise ValueError(
                 "Installed image did not receive an independent machine ID"
@@ -254,7 +264,7 @@ def main():
         json.dumps(
             {
                 "status": "passed",
-                "checks": ["two-raw-clones", "iso-install", "installed-boot"],
+                "checks": ["two-raw-clones", "iso-install", "installed-boot", "root-growth"],
                 "records": records,
                 "secure_boot_enforcement": "not-tested",
                 "remote_attestation": "not-tested",
@@ -264,7 +274,7 @@ def main():
         )
         + "\n"
     )
-    print("RAW boots, unique machine IDs, ISO installation and installed boot passed.")
+    print("RAW boots, unique machine IDs, ISO install, boot and root growth passed.")
 
 
 if __name__ == "__main__":

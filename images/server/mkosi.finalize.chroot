@@ -16,6 +16,7 @@ systemctl enable \
     systemd-resolved.service \
     systemd-timesyncd.service \
     ssh.service \
+    scos-grow-root.service \
     scos-measure.service
 systemctl enable \
     cloud-init-main.service \

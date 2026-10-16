@@ -41,10 +41,10 @@ hide the missing deployment trust.
 
 A size-optimized build additionally requires inspection of `footprint.json`,
 the size-ranked guest package list, and confirmation that the root filesystem
-can grow on the 8 GiB installer target. The existing smoke harness verifies
-boot and installation, but does not yet assert root partition/filesystem growth.
-Do not claim that disk-growth acceptance passed until that check has been added
-and executed against the exact images being evaluated.
+can grow on the 8 GiB installer target. The updated smoke harness requires
+more than 6 GiB of root filesystem capacity after installation, in addition
+to successful boot and unique machine identity. It does not verify the GPT
+partition extents directly, and still requires a full image build to pass.
 
 
 On a supported build host, `make smoke` is designed to:
@@ -52,7 +52,8 @@ On a supported build host, `make smoke` is designed to:
 1. Boot two disposable RAW clones and collect guest boot evidence.
 2. Require different initialized machine IDs.
 3. Boot the installer ISO with a blank virtual disk and run installation.
-4. Boot that disk without the ISO and require a third machine ID.
+4. Boot that disk without the ISO, require a third machine ID and a
+   root filesystem capacity exceeding 6 GiB.
 5. Write logs and a success record only after the required markers are observed.
 
 Use `make repro` for an independent byte comparison of two unsigned builds.

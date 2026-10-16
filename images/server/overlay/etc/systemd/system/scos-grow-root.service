@@ -1,0 +1,14 @@
+[Unit]
+Description=Grow SC Linux root filesystem after repartitioning
+Documentation=man:systemd-repart(8) man:systemd-growfs(8)
+Requires=systemd-repart.service
+After=local-fs.target systemd-repart.service
+Before=scos-measure.service
+ConditionPathExists=/usr/lib/repart.d/50-root.conf
+
+[Service]
+Type=oneshot
+ExecStart=/usr/lib/systemd/systemd-growfs /
+
+[Install]
+WantedBy=multi-user.target

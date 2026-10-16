@@ -33,6 +33,20 @@ class ImageSizeConfigurationTests(unittest.TestCase):
             (ROOT / "images/server/overlay/usr/lib/repart.d/50-root.conf").is_file()
         )
 
+    def test_guest_growth_service_is_enabled_and_ordered(self):
+        unit = (
+            ROOT / "images/server/overlay/etc/systemd/system/scos-grow-root.service"
+        ).read_text()
+        self.assertIn("Requires=systemd-repart.service", unit)
+        self.assertIn("After=local-fs.target systemd-repart.service", unit)
+        self.assertIn("ExecStart=/usr/lib/systemd/systemd-growfs /", unit)
+        finalize = (ROOT / "images/server/mkosi.finalize.chroot").read_text()
+        self.assertIn("scos-grow-root.service", finalize)
+        measure = (
+            ROOT / "images/server/overlay/etc/systemd/system/scos-measure.service"
+        ).read_text()
+        self.assertIn("Requires=scos-grow-root.service", measure)
+
     def test_compression_and_report_generation(self):
         build = (ROOT / "scripts/build-inside.sh").read_text()
         self.assertIn("zstd -T1 -19 --no-progress", build)

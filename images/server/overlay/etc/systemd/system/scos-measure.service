@@ -1,6 +1,7 @@
 [Unit]
 Description=Record measured-boot diagnostics (not remote attestation)
-After=systemd-udev-trigger.service local-fs.target
+Requires=scos-grow-root.service
+After=systemd-udev-trigger.service local-fs.target scos-grow-root.service
 ConditionPathExists=/sys/class/tpm/tpm0
 
 [Service]

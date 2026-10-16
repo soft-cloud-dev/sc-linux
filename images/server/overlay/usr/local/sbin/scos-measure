@@ -4,6 +4,7 @@
 import argparse
 import hashlib
 import json
+import os
 import pathlib
 import subprocess
 import sys
@@ -39,11 +40,13 @@ def main():
         ["tpm2_eventlog", str(args.output / "eventlog.bin")]
     )
     (args.output / "eventlog.yaml").write_bytes(parsed)
+    root = os.statvfs("/")
     record = {
         "boot_id": pathlib.Path("/proc/sys/kernel/random/boot_id").read_text().strip(),
         "machine_id": pathlib.Path("/etc/machine-id").read_text().strip(),
         "eventlog_sha256": hashlib.sha256(log).hexdigest(),
         "eventlog_bytes": len(log),
+        "root_filesystem_bytes": root.f_blocks * root.f_frsize,
         "authorization": "not-evaluated",
     }
     (args.output / "summary.json").write_text(json.dumps(record, indent=2) + "\n")

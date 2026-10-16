@@ -119,7 +119,8 @@ not a hermetic-build claim.
 ## GitHub Actions
 
 - **Validate** runs source tests on pushes, pull requests, and manual dispatch.
-- **Build Linux** runs only by manual dispatch on `main`. Commit the real CA first.
+- **Build Linux** runs only by manual dispatch; select a reviewed branch or `main`.
+  Commit the real CA first.
 - The build workflow runs source checks, image construction, and VM smoke tests.
   Its optional reproducibility input adds two unsigned builds.
 - Images upload only after required checks pass. Failed boot logs are preserved

@@ -13,7 +13,7 @@ concurrency:
   cancel-in-progress: false
 jobs:
   build:
-    if: github.ref == 'refs/heads/main'
+    # Manual dispatch only; review branch source before using the privileged builder.
     runs-on: ubuntu-24.04
     timeout-minutes: 120
     steps:
