@@ -53,6 +53,7 @@ jobs:
             build/output/*.txt
             build/output/*.tsv
             build/output/raw/*.manifest
+            build/output/raw/*.tsv
             build/output/installer/*.manifest
             build/output/tests/
           if-no-files-found: error

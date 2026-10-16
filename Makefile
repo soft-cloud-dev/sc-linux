@@ -18,6 +18,7 @@ check:
 	python3 scripts/check.py
 	@set -e; for script in scripts/*.sh; do bash -n "$$script"; done
 	sh -n images/server/mkosi.finalize.chroot
+	sh -n images/installer/mkosi.finalize.chroot
 	sh -n images/installer/overlay/usr/local/sbin/scos-installer-shell
 
 builder:
