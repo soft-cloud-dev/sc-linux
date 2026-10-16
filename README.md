@@ -19,6 +19,12 @@ make check
 
 The build requires an **amd64 Linux** machine with Docker, Git, Make, OpenSSL and at least **40 GiB free**. It uses privileged containers. Follow [the build guide](docs/building.md) before running it.
 
+## Guided Jupyter Book: build an OS step by step
+
+The [SC Linux build book](book/index.md) separates the workflow into nine self-contained chapters: host prerequisites, image configuration, CA trust, builder, image construction, checksums/footprint, QEMU boot, host seed and reproducibility.
+
+Read the chapters on GitHub or open working copies in JupyterLab with `make book-lab`. The book's code cells run local commands and some build privileged Docker images; the public HTML book must **not** execute them. To render the site, install Jupyter Book 2 and use `make book-html` (without `--execute`). The installed OS never includes Jupyter.
+
 ## Learn and operate through notebooks
 
 Open [`notebooks/`](notebooks) in JupyterLab, starting Jupyter from the repository root:
