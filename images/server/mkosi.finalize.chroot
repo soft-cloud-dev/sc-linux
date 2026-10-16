@@ -34,7 +34,7 @@ rm -f /var/lib/dbus/machine-id
 
 PYTHONPATH=/usr/local/lib python3 -c 'from scos.core import check_tree; check_tree("/")'
 # Drop disposable package caches and compiled Python artifacts.
-apt-get clean
+rm -f /var/cache/apt/archives/*.deb /var/cache/apt/archives/partial/*.deb
 find /usr -type d -name __pycache__ -prune -exec rm -rf {} +
 find /usr -type f -name '*.pyc' -delete
 
