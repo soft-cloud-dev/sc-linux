@@ -28,6 +28,11 @@ def parse_measurement(text):
     raise ValueError("Guest did not produce boot evidence")
 
 
+def read_boot_report(path):
+    """Parse machine-readable boot evidence independently of the shared console."""
+    return validate_measurement(parse_measurement(path.read_text(errors="replace")))
+
+
 def validate_measurement(record):
     """Require initialized identity without inventing an authorization verdict."""
     if not re.fullmatch("[0-9a-f]{32}", record.get("machine_id", "")):
@@ -57,7 +62,7 @@ def stop(proc):
             proc.wait(timeout=10)
 
 
-def monitor_guest(qemu, log_path, *, installing, timeout):
+def monitor_guest(qemu, log_path, *, installing, timeout, report_path=None):
     """Persist console output and wait for the expected boot or install marker."""
     with selectors.DefaultSelector() as selector:
         selector.register(qemu.stdout, selectors.EVENT_READ)
@@ -88,12 +93,18 @@ def monitor_guest(qemu, log_path, *, installing, timeout):
                         confirmed = True
                     if installing and "SCOS_INSTALL_COMPLETE" in text:
                         return None
-                    if not installing and "SCOS_BOOT_MEASURED " in text:
+                    if not installing and report_path is None and "SCOS_BOOT_MEASURED " in text:
                         try:
                             record = parse_measurement(text)
                         except (ValueError, json.JSONDecodeError):
                             continue
                         return validate_measurement(record)
+                if not installing and report_path is not None and report_path.is_file():
+                    try:
+                        return read_boot_report(report_path)
+                    except (ValueError, json.JSONDecodeError):
+                        # The guest may still be writing the report.
+                        pass
                 if qemu.poll() is not None:
                     raise RuntimeError(
                         "Guest exited without reaching its acceptance marker"
@@ -101,7 +112,7 @@ def monitor_guest(qemu, log_path, *, installing, timeout):
         raise TimeoutError("Guest did not finish; inspect " + str(log_path))
 
 
-def qemu_command(disk, code, variables, control, iso):
+def qemu_command(disk, code, variables, control, iso, report_path=None):
     """Use isolated firmware variables, a software TPM, and no network interface."""
     accel = "kvm" if os.access("/dev/kvm", os.R_OK | os.W_OK) else "tcg"
     command = [
@@ -138,6 +149,13 @@ def qemu_command(disk, code, variables, control, iso):
     ]
     if iso:
         command += ["-cdrom", str(iso), "-boot", "order=d"]
+    elif report_path is not None:
+        command += [
+            "-device", "virtio-serial-pci",
+            "-chardev", "file,id=scos-report,path=" + str(report_path),
+            "-device",
+            "virtserialport,chardev=scos-report,name=org.softcloud.scos.boot",
+        ]
     return command
 
 
@@ -171,7 +189,10 @@ def boot(disk, log_path, *, iso=None, timeout=900):
                 ]
             )
             wait_path(control, tpm)
-            command = qemu_command(disk, code, tmp / "vars.fd", control, iso)
+            report_path = tmp / "boot-report.log" if iso is None else None
+            command = qemu_command(
+                disk, code, tmp / "vars.fd", control, iso, report_path
+            )
             qemu = subprocess.Popen(
                 command,
                 stdin=subprocess.PIPE,
@@ -179,7 +200,8 @@ def boot(disk, log_path, *, iso=None, timeout=900):
                 stderr=subprocess.STDOUT,
             )
             return monitor_guest(
-                qemu, log_path, installing=iso is not None, timeout=timeout
+                qemu, log_path, installing=iso is not None, timeout=timeout,
+                report_path=report_path,
             )
         finally:
             stop(qemu)
