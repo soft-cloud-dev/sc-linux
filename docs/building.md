@@ -46,7 +46,7 @@ For a second build, provide a different destination:
 bash scripts/build.sh build/run-02
 ```
 
-You can also follow these operations cell by cell in [`02-build.ipynb`](../notebooks/02-build.ipynb).
+For a cell-by-cell build in JupyterLab, activate your JupyterLab virtual environment and run `make lab`. Open `02-build.ipynb` from `build/notebooks/`. Working copies are Git-ignored so saved notebook outputs cannot violate the clean-tree build requirement.
 
 ## 4. Inspect and boot-test
 
@@ -83,3 +83,10 @@ For byte-for-byte comparison of two independently built **unsigned** images, use
 ## Important limitations
 
 The project pins an apt snapshot, so security updates are not automatic. Changes to the snapshot, package list, kernel or mkosi version need new builds and verification. A successful `make check` is **not** proof that the RAW boots, the installer works, or FreeIPA enrollment succeeds.
+
+## Troubleshooting
+
+- **Git working tree is dirty:** commit source edits, and use `make lab` to run ignored notebook copies instead of tracked files.
+- **CA verification fails:** check the certificate fingerprint through an independent trusted channel; do not use a placeholder CA for build outputs.
+- **Output already exists:** specify a fresh directory under `build/`, or move earlier outputs elsewhere.
+- **Docker or VM boot fails:** use supported amd64 Linux and check Docker privileges. QEMU falls back to software emulation when KVM is unavailable.

@@ -49,10 +49,10 @@ JupyterLab is needed only when you want to **explore cells interactively**. Inst
 python3 -m venv .venv
 . .venv/bin/activate
 python -m pip install jupyterlab
-jupyter lab
+make lab
 ```
 
-Start JupyterLab from the repository root, then open `notebooks/01-validate.ipynb`. For CI and ordinary command-line use, prefer `make` and `scripts/notebook.sh`; neither requires JupyterLab.
+Run `make lab`, then open `01-validate.ipynb`. This creates **working copies** of the notebooks in ignored `build/notebooks/`, so Jupyter autosave and execution outputs cannot dirty the committed source or block image builds. Repeated launches preserve these copies. To contribute changes, deliberately copy the edited notebook back into `notebooks/`, clear its cell outputs, and commit it. CI and command-line builds continue to use the committed notebooks through `make` and `scripts/notebook.sh`.
 
 ## Build and test
 

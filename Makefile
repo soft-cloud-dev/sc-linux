@@ -1,11 +1,12 @@
 .DEFAULT_GOAL := help
-.PHONY: help check builder images smoke repro
+.PHONY: help check builder images smoke repro lab
 
 help:
 	@printf '%s\n' \
 	  'SC Linux image factory' \
 	  '' \
 	  '  make check    Run unit tests, source checks, and shell syntax checks' \
+	  '  make lab      Open JupyterLab working copies' \
 	  '  make builder  Build the pinned Docker toolchain' \
 	  '  make images   Build the RAW disk and UEFI installer ISO' \
 	  '  make smoke    Boot RAW clones, install the ISO, and boot the result' \
@@ -32,3 +33,6 @@ smoke:
 
 repro:
 	bash scripts/repro.sh
+
+lab:
+	bash scripts/lab.sh

@@ -16,6 +16,8 @@
 
 The notebooks are the **canonical host-side Python sources**, not copies of `scripts/*.py`. The runner in `scripts/notebook.sh` executes them without Jupyter, so the exact notebook cells are used in CI.
 
+Run interactive notebooks with `make lab`. It creates working copies in ignored `build/notebooks/` so execution counters and saved outputs never dirty the committed source. To contribute, copy reviewed edits back into `notebooks/`, clear cell outputs, and commit the canonical version.
+
 Keep each notebook easy to read from top to bottom: goal, prerequisites, visible arguments, focused cells, and checks. Put import-safe helpers before the final guarded command cell. Do not commit generated outputs, secrets, private keys, kernel traces, or host credentials. Avoid hidden notebook state and unreviewed network access.
 
 ## Test before opening a PR
