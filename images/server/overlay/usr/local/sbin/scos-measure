@@ -8,6 +8,19 @@ import pathlib
 import subprocess
 import sys
 
+BOOT_REPORT_PORT = pathlib.Path("/dev/virtio-ports/org.softcloud.scos.boot")
+
+
+def publish_measurement(record, port=BOOT_REPORT_PORT):
+    """Emit evidence on a dedicated test channel when QEMU provides one."""
+    marker = "SCOS_BOOT_MEASURED " + json.dumps(record)
+    if port.is_char_device():
+        with port.open("w", encoding="utf-8") as stream:
+            stream.write(marker + "\n")
+            stream.flush()
+    print(marker, flush=True)
+
+
 
 def main():
     p = argparse.ArgumentParser(description=__doc__)
@@ -34,7 +47,7 @@ def main():
         "authorization": "not-evaluated",
     }
     (args.output / "summary.json").write_text(json.dumps(record, indent=2) + "\n")
-    print("SCOS_BOOT_MEASURED " + json.dumps(record), flush=True)
+    publish_measurement(record)
 
 
 if __name__ == "__main__":
