@@ -19,7 +19,9 @@ prepare_workspace() {
 
     tar -C /src \
         --exclude=./.git --exclude=./build --exclude=./dist \
-        --exclude=__pycache__ --exclude='*.pyc' -cf - . |
+        --exclude=./_build --exclude=./.myst --exclude=./.venv \
+        --exclude=__pycache__ --exclude='*.pyc' \
+        --exclude=.ipynb_checkpoints -cf - . |
         tar -C "$work_directory" -xf -
     cd "$work_directory"
 }
