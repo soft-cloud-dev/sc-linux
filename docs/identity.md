@@ -18,7 +18,7 @@ Use lowercase fully qualified hostnames **below** this domain. Do not enroll a n
 
 ## 2. Import only a verified public CA
 
-Get the CA certificate from your IPA administrator. Verify its **DER SHA-256** fingerprint independently rather than trusting a downloaded PEM file by itself.
+The repository includes a public CA and fingerprint. Confirm that the **DER SHA-256** fingerprint matches the CA supplied by your FreeIPA administrator through an independent trusted channel. The following command replaces the checked-in CA when necessary:
 
 ```sh
 bash scripts/notebook.sh notebooks/trust.ipynb /secure/path/ipa-ca.crt --sha256 VERIFIED_DER_SHA256
