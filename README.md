@@ -41,6 +41,19 @@ make check
 
 The notebook is the executable source. The runner evaluates its Python cells in order; it does not execute Markdown or install dependencies. JupyterLab is an optional interface, not part of the deployed OS.
 
+## Open notebooks interactively
+
+JupyterLab is needed only when you want to **explore cells interactively**. Install it in a local development environment, not in the built OS:
+
+```sh
+python3 -m venv .venv
+. .venv/bin/activate
+python -m pip install jupyterlab
+jupyter lab
+```
+
+Start JupyterLab from the repository root, then open `notebooks/01-validate.ipynb`. For CI and ordinary command-line use, prefer `make` and `scripts/notebook.sh`; neither requires JupyterLab.
+
 ## Build and test
 
 After configuring verified CA trust and committing your changes:
