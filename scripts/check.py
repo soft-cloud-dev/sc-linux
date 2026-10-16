@@ -2,6 +2,7 @@
 """Check source inputs; use --require-trust before building images."""
 
 import argparse
+import configparser
 import ast
 import json
 import re
@@ -11,6 +12,25 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "lib"))
 from scos.core import check_tree, read_identity, verify_ca
+
+
+def parse_mkosi_packages(value: str) -> list[str]:
+    """Reject package groups that mkosi would forward as one APT argument."""
+    packages = [entry.strip() for entry in re.split(r"[,\n]", value) if entry.strip()]
+    if not packages or any(len(entry.split()) != 1 for entry in packages):
+        raise ValueError(
+            "mkosi Packages= requires comma-separated names or one package per line"
+        )
+    return packages
+
+
+def check_mkosi_packages() -> None:
+    for image in ("server", "installer"):
+        path = ROOT / "images" / image / "mkosi.conf"
+        configuration = configparser.ConfigParser(interpolation=None)
+        with path.open() as source:
+            configuration.read_file(source)
+        parse_mkosi_packages(configuration.get("Content", "Packages"))
 
 
 def check_configuration() -> None:
@@ -66,6 +86,7 @@ def main() -> None:
     parser.add_argument("--require-trust", action="store_true")
     arguments = parser.parse_args()
     check_configuration()
+    check_mkosi_packages()
     for image in ("server", "installer"):
         check_tree(ROOT / "images" / image / "overlay")
     check_trust(arguments.require_trust)
