@@ -1,86 +1,60 @@
-# Install and provision a host
+# Install and provision a machine
 
-[README](../README.md) · [Build](building.md) · [Enroll](identity.md)
+[Home](../README.md) · [Build](building.md) · [Identity](identity.md)
 
-## Prepare one seed per machine
+**Warning:** writing an OS image destroys data on the selected disk. Confirm the disk ID and keep installer media under operator control.
 
-Choose an inventory-assigned hostname below the configured IPA domain and a
-public SSH key. The default domain is `ipa.softcloud.dev`; the IPA server's own
-hostname cannot be used for a client.
+## 1. Create a host-specific seed
 
-The seed helper requires `xorriso` and `ssh-keygen`. Install them on the machine
-running the helper, or use the builder container.
+Each host needs its **own** NoCloud seed, containing a hostname and SSH public key. The default domain is `ipa.softcloud.dev`. The seed must not contain a FreeIPA password, OTP or private key.
 
 ```sh
-python3 scripts/seed.py node01.ipa.softcloud.dev ~/.ssh/id_ed25519.pub build/node01-seed.iso
+bash scripts/notebook.sh notebooks/seed.ipynb node01.ipa.softcloud.dev ~/.ssh/id_ed25519.pub build/node01-seed.iso
 ```
 
-The helper refuses to overwrite an existing seed. It writes NoCloud user-data
-and a unique instance ID to an ISO labelled `cidata`.
+Requires `xorriso` and `ssh-keygen`. The tool refuses to overwrite an existing seed. The `cidata` ISO creates a `scos` user with that public key and passwordless sudo at first boot. Protect it: replacing the public key changes who gets administrator access.
 
-On the installed system's first boot, attach this seed as a second read-only
-CD-ROM. It creates user `scos` with the supplied public key and passwordless sudo.
-Root login and SSH password authentication are disabled. There is no shared
-recovery password.
+## 2. Install the OS
 
-Protect the seed's integrity: replacing its public key grants administrator
-access. Remove it after initialization and do not reuse it for another host.
-Do not provide untrusted cloud-init user-data.
-
-## Choose a deployment path
-
-### Installer ISO
-
-1. Boot `sc-linux.iso` in UEFI mode with the destination disk attached.
-2. Inspect the available disks with `lsblk`.
-3. Select the whole disk explicitly. Replace the example device below.
+**Option A — installer ISO:** boot `build/output/sc-linux.iso` in **UEFI mode** and inspect available disks.
 
 ```sh
 lsblk
 scos-install /dev/disk/by-id/YOUR-DISK
 ```
 
-The installer checks both the compressed and uncompressed payload before writing.
-It requires the exact confirmation `ERASE /dev/RESOLVED-DEVICE` shown in its prompt.
-It rejects a mounted, mapped, read-only, undersized, or non-disk target, and verifies
-the image bytes read back from the disk after writing.
+The installer resolves and validates the selected **whole disk**. It checks payload hashes, prompts for a disk-specific `ERASE` confirmation, writes the disk and reads back the image. Installation is destructive, **not** a secure erase. Remove installer media when it finishes.
 
-**Installation destroys existing data on the selected disk. It is not a secure erase.**
-After completion, remove the installer ISO, attach the per-host seed, and reboot
-from the installed disk. The installer provides a root console; keep the media
-under operator control.
-
-### Direct RAW deployment
-
-Decompress the disk image, then import it using your hypervisor's disk-image
-import operation:
+**Option B — direct RAW import:** decompress the image and import it with your hypervisor.
 
 ```sh
 zstd -d build/output/sc-linux.raw.zst -o build/sc-linux.raw
 ```
 
-Attach the seed before the first boot. Do not attach multiple copies of this
-template as boot disks to one VM: disk and partition UUIDs identify the template,
-not the provisioned host.
+Do not use the ISO as a RAW disk or run two active clones of the template on the same storage path.
 
-## First login
+## 3. First boot and SSH
 
-Matching Ethernet interfaces (`en*` and `eth*`) use DHCP. The resolver must reach
-the IPA domain and the system clock must synchronize before enrollment.
+Attach the host's seed as a **second read-only CD-ROM** before first boot. Networking uses DHCP for standard Ethernet interface names.
+
+After boot, verify DNS resolution and time synchronization, then log in:
 
 ```sh
 ssh scos@node01.ipa.softcloud.dev
+```
+
+After provisioning, remove the seed and keep it securely archived or destroy it. Do not reuse it for another machine.
+
+## 4. Enroll in FreeIPA
+
+Create a host enrollment OTP through your approved administrative process, then on the host run:
+
+```sh
 sudo scos-enroll node01.ipa.softcloud.dev
 ```
 
-Follow the [enrollment guide](identity.md#enroll-a-provisioned-host) for OTP handling
-and post-enrollment checks. Successful SSH access depends on the seed, networking,
-and name resolution; local source tests do not establish that those work in your lab.
+Enter the **one-time host OTP** at the native FreeIPA client prompt. Never place it in commands, environment variables, notebook outputs or seed media. See [Identity](identity.md) for post-enrollment checks.
 
-## Disk and boot limits
+## Platform boundaries
 
-- UEFI only; legacy BIOS is not supported.
-- The server uses a writable ext4 root of approximately 4 GiB plus a 512 MiB ESP.
-- Installing onto a larger disk relocates the backup GPT header but does not grow
-  the root partition or filesystem. Expansion is a separate administrative task.
-- A TPM-less server can boot; it does not report successful TPM evidence collection.
+UEFI is required. The server starts with a **384 MiB ESP** and an ext4 root with a **2 GiB minimum**; the finished root size depends on the build. Partition/filesystem growth on larger targets must be tested separately. A TPM-less host may boot, but cannot furnish TPM measurement evidence.

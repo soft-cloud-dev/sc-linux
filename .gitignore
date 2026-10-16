@@ -1,5 +1,8 @@
 /build/
 /dist/
+.venv/
+.ipynb_checkpoints/
+**/.ipynb_checkpoints/
 __pycache__/
 *.pyc
 *.key
