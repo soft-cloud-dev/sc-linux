@@ -7,8 +7,8 @@ A small **Debian 13 (Trixie) amd64** server image, built with **mkosi 25.3-7**. 
 ## Get started
 
 1. Clone the repository and run source checks.
-2. Import the **real** public FreeIPA CA after verifying its fingerprint independently.
-3. Commit the public CA and configuration changes.
+2. Independently verify the fingerprint of the checked-in public FreeIPA CA, or replace it with your own reviewed CA.
+3. Commit any configuration or trust changes.
 4. Build the images and run the disposable VM tests.
 
 ```sh
