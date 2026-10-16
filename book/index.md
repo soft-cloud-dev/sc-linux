@@ -1,6 +1,6 @@
 # Build SC Linux, one action at a time
 
-SC Linux builds a Debian 13 (`amd64`) UEFI server disk and an installer ISO using `mkosi`. This book explains each decision, runs one bounded action at a time, and checks the result before moving on.
+SC Linux builds a Debian 13 (`amd64`) UEFI server disk and an installer ISO using `mkosi`. This book explains each decision, runs a sequence of independently inspectable actions, and checks the result before moving on.
 
 **What you will produce:** `sc-linux.raw.zst` (deployable compressed disk) and `sc-linux.iso` (UEFI installer), plus size reports, hashes and disposable VM boot evidence.
 
