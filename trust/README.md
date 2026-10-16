@@ -1,6 +1,6 @@
 # Public FreeIPA CA
 
-This directory contains **only public trust material**. A fresh checkout has no active IPA CA until the operator installs the real certificate.
+This directory contains **only public trust material**. The repository includes a public CA certificate and its DER SHA-256 fingerprint. **Their presence does not establish independent trust.** Confirm the fingerprint through your FreeIPA administrator before building; replace the pair when using a different CA.
 
 1. Obtain the public IPA CA certificate from your administrator.
 2. Independently verify its **DER-encoded SHA-256** certificate fingerprint.
