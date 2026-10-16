@@ -19,6 +19,7 @@ project:
         - file: book/06-artifacts.ipynb
         - file: book/07-boot.ipynb
         - file: book/08-provision.ipynb
+        - file: book/09-reproducibility.ipynb
     - file: book/appendix.md
 site:
   template: book-theme
