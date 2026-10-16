@@ -12,13 +12,19 @@ The exact Debian snapshot and mkosi package are declared in [`config/build.json`
 
 ## 1. Verify the FreeIPA CA
 
-Obtain the CA certificate and confirm its **DER SHA-256 fingerprint through an independent trusted channel**. Replace the example values below.
+The repository includes a public CA certificate and fingerprint in `trust/`. **Verify the fingerprint independently** through the FreeIPA administrator; do not rely on the checked-in fingerprint as its own proof. Then check the source:
+
+```sh
+make check
+bash scripts/notebook.sh notebooks/check.ipynb --require-trust
+```
+
+If deploying with a different CA, import the reviewed replacement with:
 
 ```sh
 bash scripts/notebook.sh notebooks/trust.ipynb /secure/path/ipa-ca.crt --sha256 VERIFIED_DER_SHA256
-make check
 git add trust/ipa-ca.crt trust/ipa-ca.sha256
-git commit -m "Configure public IPA CA"
+git commit -m "Update public IPA CA"
 ```
 
 Do not commit private keys or an invented trust anchor. For more context see [Identity](identity.md).
