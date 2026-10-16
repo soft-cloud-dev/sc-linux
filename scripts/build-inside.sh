@@ -66,18 +66,18 @@ record_installer_payload() {
     stage record-installer-payload
     # Embed the expected payload digest in the installer before building its UKI.
     PYTHONPATH=lib python3 - <<'PY'
-    import json
-    from pathlib import Path
-    from scos.core import describe_file
+import json
+from pathlib import Path
+from scos.core import describe_file
 
-    manifest = {
-        'raw': describe_file('/out/raw/sc-linux.raw'),
-        'compressed': describe_file('/out/sc-linux.raw.zst'),
-    }
-    text = json.dumps(manifest, sort_keys=True, indent=2) + '\n'
-    Path('build/installer-overlay/usr/local/share/scos/payload.json').write_text(text)
-    Path('/out/payload.json').write_text(text)
-    PY
+manifest = {
+    'raw': describe_file('/out/raw/sc-linux.raw'),
+    'compressed': describe_file('/out/sc-linux.raw.zst'),
+}
+text = json.dumps(manifest, sort_keys=True, indent=2) + '\n'
+Path('build/installer-overlay/usr/local/share/scos/payload.json').write_text(text)
+Path('/out/payload.json').write_text(text)
+PY
 }
 
 build_installer_uki() {
