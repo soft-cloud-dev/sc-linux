@@ -15,7 +15,7 @@ help:
 
 check:
 	python3 -m unittest discover -s tests -v
-	python3 scripts/check.py
+	bash scripts/notebook.sh notebooks/check.ipynb
 	@set -e; for script in scripts/*.sh; do bash -n "$$script"; done
 	sh -n images/server/mkosi.finalize.chroot
 	sh -n images/installer/mkosi.finalize.chroot

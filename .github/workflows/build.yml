@@ -23,7 +23,7 @@ jobs:
       - name: Validate source and real CA
         run: |
           make check
-          python3 scripts/check.py --require-trust
+          bash scripts/notebook.sh notebooks/check.ipynb --require-trust
       - name: Build isolated toolchain
         run: make builder
       - name: Build RAW and installer ISO
