@@ -8,7 +8,7 @@ fail() {
     exit 1
 }
 
-python3 scripts/check.py --require-trust
+bash scripts/notebook.sh notebooks/check.ipynb --require-trust
 [[ -s build/builder.id ]] || fail 'Run make builder first.'
 [[ -z $(git status --porcelain --untracked-files=normal) ]] ||
     fail 'Commit source and CA changes before building.'
