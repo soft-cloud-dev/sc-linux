@@ -1,0 +1,25 @@
+version: 1
+project:
+  title: Building SC Linux
+  description: A step-by-step laboratory for building and verifying a Debian 13 operating system image
+  github: soft-cloud-dev/sc-linux
+  toc:
+    - file: book/index.md
+    - title: Prepare
+      children:
+        - file: book/01-environment.ipynb
+        - file: book/02-configuration.ipynb
+        - file: book/03-trust.ipynb
+    - title: Build
+      children:
+        - file: book/04-builder.ipynb
+        - file: book/05-image.ipynb
+    - title: Verify and deploy
+      children:
+        - file: book/06-artifacts.ipynb
+        - file: book/07-boot.ipynb
+        - file: book/08-provision.ipynb
+    - file: book/appendix.md
+site:
+  template: book-theme
+  title: Building SC Linux
