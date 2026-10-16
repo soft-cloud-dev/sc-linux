@@ -1,140 +1,98 @@
-# Build images
+# Build your first image
 
-[README](../README.md) · [Install](installing.md) · [Verify](verification.md)
+[Home](../README.md) · [Install](installing.md) · [Verification](verification.md)
 
-## Requirements
+This guide builds **two files from one server definition**: a compressed RAW disk for a hypervisor, and an ISO that installs the same disk image.
 
-Use an amd64 Linux host with Docker, Git, Make, Python 3.11+, and OpenSSL.
-Reserve at least 40 GiB of disk space; two-build comparisons require more.
-The builder needs privileged containers and working mount namespaces.
-Docker Desktop is not qualified. VM tests use KVM when accessible and TCG otherwise.
+## Before you start
 
-The selected toolchain and package snapshot are in [config/build.json](../config/build.json).
-The image identity is in [config/identity.json](../config/identity.json).
+Use an **amd64 Linux host**, not Docker Desktop. Install Docker, Git, Make, Python 3.11+ and OpenSSL. Reserve at least **40 GiB** disk space. You need a verified **public** FreeIPA CA. The build uses privileged Docker and requires a clean, committed Git checkout.
 
-## 1. Configure trust
+The exact Debian snapshot and mkosi package are declared in [`config/build.json`](../config/build.json). Identity is in [`config/identity.json`](../config/identity.json).
 
-Obtain the real public IPA CA certificate and independently verify its SHA-256
-certificate fingerprint through a trusted administrator. The helper expects a
-hash of the certificate's DER bytes, not a hash of the PEM file.
+## 1. Verify the FreeIPA CA
 
-Replace both example arguments before running this block:
+The repository includes a public CA certificate and fingerprint in `trust/`. **Verify the fingerprint independently** through the FreeIPA administrator; do not rely on the checked-in fingerprint as its own proof. Then check the source:
 
 ```sh
-python3 scripts/trust.py /secure/path/ipa-ca.crt --sha256 YOUR_VERIFIED_CERTIFICATE_SHA256
 make check
-git add trust/ipa-ca.crt trust/ipa-ca.sha256
-git commit -m "Configure verified IPA CA trust"
+bash scripts/notebook.sh notebooks/check.ipynb --require-trust
 ```
 
-Only the public certificate and its fingerprint belong in Git. See
-[identity and trust](identity.md) for the exact configuration and enrollment model.
-
-## 2. Build and test
-
-Run from a clean checkout with all source changes committed:
+If deploying with a different CA, import the reviewed replacement with:
 
 ```sh
-make builder
-make images
-make smoke
+bash scripts/notebook.sh notebooks/trust.ipynb /secure/path/ipa-ca.crt --sha256 VERIFIED_DER_SHA256
+git add trust/ipa-ca.crt trust/ipa-ca.sha256
+git commit -m "Update public IPA CA"
 ```
 
-`make builder` resolves the base container tag to a digest, builds the toolchain,
-and records its image ID. `make images` uses that builder to create the server
-RAW, compress it, embed its digest in the installer, and assemble the ISO.
-`make smoke` boots disposable clones and exercises ISO installation.
+Do not commit private keys or an invented trust anchor. For more context see [Identity](identity.md).
 
-The output directory must be empty. Keep earlier builds and select a new output
-location when needed:
+## 2. Validate and create the builder
+
+```sh
+make check
+make builder
+```
+
+`make check` verifies notebooks, unit tests, configuration and shell syntax without building an image. `make builder` creates a local Docker toolchain from the reviewed snapshot. It records its ID in `build/builder.id`.
+
+## 3. Produce the images
+
+```sh
+make images
+```
+
+The build stages the server files, makes a bootable RAW disk, compresses it with zstd, hashes it, builds the installer UKI and wraps that in a UEFI ISO. The output directory must be **empty**. By default it is `build/output/`.
+
+For a second build, provide a different destination:
 
 ```sh
 bash scripts/build.sh build/run-02
-bash scripts/smoke.sh build/run-02
 ```
 
-Custom output paths should remain under ignored `build/` or outside the checkout.
-Otherwise the next build will detect uncommitted artifacts and refuse to run.
+For a cell-by-cell build in JupyterLab, activate your JupyterLab virtual environment and run `make lab`. Open `02-build.ipynb` from `build/notebooks/`. Working copies are Git-ignored so saved notebook outputs cannot violate the clean-tree build requirement.
 
-## 3. Inspect outputs
+## 4. Inspect and boot-test
 
-| Path under `build/output/` | Contents |
+```sh
+make smoke
+```
+
+The disposable VM tests boot two RAW clones, run the ISO installer against a blank virtual disk, and boot the result. Logs and `smoke.json` are written under `build/output/tests/`.
+
+Open [`03-inspect.ipynb`](../notebooks/03-inspect.ipynb) for hashes and size measurements or [`04-smoke.ipynb`](../notebooks/04-smoke.ipynb) to examine the VM test results.
+
+| Output | Meaning |
 | --- | --- |
-| `sc-linux.raw.zst` | Compressed server image |
-| `sc-linux.iso` | Installer UKI and compressed server payload |
-| `raw/sc-linux.raw` | Uncompressed template used by smoke tests |
-| `raw/`, `installer/` | mkosi output, including package manifests |
-| `raw/sc-linux.packages-kib.tsv` | Guest packages sorted by dpkg Installed-Size (KiB) |
-| `raw/sc-linux.directories-bytes.tsv` | Major guest directory sizes in bytes |
-| `footprint.json` | RAW/ISO sizes, compression savings, and top packages |
-| `SHA256SUMS`, `artifacts.json` | Final artifact hashes and sizes |
-| `payload.json` | Expected compressed and uncompressed payload hashes |
-| `build-config.json` | Build configuration |
-| `builder.id`, `builder-base.txt`, `builder-packages.tsv` | Builder provenance |
-| `source-commit.txt`, `source-date-epoch.txt` | Source revision and timestamp |
-| `tests/` | Smoke logs and `smoke.json` after a successful run |
+| `sc-linux.raw.zst` | Compressed RAW disk image |
+| `sc-linux.iso` | UEFI installer containing the compressed disk |
+| `raw/sc-linux.raw` | Uncompressed disk used for VM tests |
+| `artifacts.json` / `SHA256SUMS` | Byte sizes and SHA-256 |
+| `footprint.json` | Disk/ISO/package size report |
+| `payload.json` | Hashes embedded in the installer |
+| `tests/` | VM logs and smoke result |
 
-Run `make images` before inspecting guest sizes. See the [footprint guide](footprint.md)
-for measurements, limits, and optimization acceptance criteria.
+## Optional: EFI signing and reproducibility
 
-Checksums detect corruption. They do not authenticate a download when an attacker
-can replace both the images and their checksum file.
-
-## Optional: sign the EFI images
-
-Provide `private.key` and `certificate.pem` in a protected directory outside the
-repository. The builder mounts it read-only and disables automatic firmware key
-enrollment.
+The CI build is unsigned. To sign locally, store `private.key` and `certificate.pem` in a protected directory **outside the repository** and use:
 
 ```sh
 SCOS_SIGNING_DIR=/secure/efi-signing make images
 ```
 
-Provision the matching trust in the target firmware separately. A signed UKI
-does not authenticate the writable root filesystem. The default CI build is unsigned.
+Firmware trust must be configured separately. A signed UKI does **not** authenticate the writable ext4 root.
 
-## Repeat a reviewed build
+For byte-for-byte comparison of two independently built **unsigned** images, use `make repro` with clean output directories. This is not proof of a fully hermetic build, and it does not replace testing.
 
-To reuse a previously reviewed base container digest:
+## Important limitations
 
-```sh
-SCOS_BASE_IMAGE=debian@sha256:YOUR_REVIEWED_DIGEST make builder
-```
+The project pins an apt snapshot, so security updates are not automatic. Changes to the snapshot, package list, kernel or mkosi version need new builds and verification. A successful `make check` is **not** proof that the RAW boots, the installer works, or FreeIPA enrollment succeeds.
 
-Keep or export the resulting local builder image. `make repro` uses the same
-builder and clean source commit for two independent unsigned builds:
+## Troubleshooting
 
-```sh
-make repro
-```
-
-It compares the complete RAW and ISO bytes and fails on any difference. Its
-`build/repro-a/` and `build/repro-b/` output directories must be empty before the
-run. Unset `SCOS_SIGNING_DIR` first. Fixed timestamps and partition seeds support
-repeatability; a successful comparison is still required to demonstrate it.
-
-The base tag and host kernel are not fully pinned by the repository. This is
-not a hermetic-build claim.
-
-## GitHub Actions
-
-- **Validate** runs source tests on pushes, pull requests, and manual dispatch.
-- **Build Linux** runs only by manual dispatch on `main`. Commit the real CA first.
-- The build workflow runs source checks, image construction, and VM smoke tests.
-  Its optional reproducibility input adds two unsigned builds.
-- Images upload only after required checks pass. Failed boot logs are preserved
-  when available. No release is created automatically.
-
-Actions are pinned to commit SHAs and repository permissions are read-only.
-The privileged builder never runs on a pull-request trigger. Review the source
-before dispatching it.
-
-## Update the snapshot
-
-Both build-time and deployed apt repositories remain on the selected Debian
-snapshot, including security and updates suites. Archive signatures remain
-required; expiry checking is disabled for the intentionally historical snapshot.
-
-There are no automatic security updates. Advance the snapshot deliberately,
-rebuild, run the checks, and redeploy. In-place kernel upgrades are not qualified:
-the project does not yet provide a UKI update/signing workflow or A/B recovery.
+- **Git working tree is dirty:** commit source edits, and use `make lab` to run ignored notebook copies instead of tracked files.
+- **CA verification fails:** check the certificate fingerprint through an independent trusted channel; do not use a placeholder CA for build outputs.
+- **Output already exists:** specify a fresh directory under `build/`, or move earlier outputs elsewhere.
+- **Docker or VM boot fails:** use supported amd64 Linux and check Docker privileges. QEMU falls back to software emulation when KVM is unavailable.

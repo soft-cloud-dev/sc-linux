@@ -1,33 +1,15 @@
 # SC Linux
 
-Build a small Debian-based SCOS server image with a native FreeIPA client.
+A small **Debian 13 (Trixie) amd64** server image, built with **mkosi 25.3-7**. One build produces a compressed bootable disk image and an installer ISO. FreeIPA enrollment happens **after** each host is provisioned.
 
-**Debian 13 · amd64 · systemd · UEFI · mkosi 25.3-7**
+**Status:** development. Source checks, image construction, VM boot and real FreeIPA enrollment are separate acceptance stages. Do not assume a successful source check means an image was tested.
 
-SC Linux produces a bootable disk image and an installer ISO from the same
-server definition. Each deployed host receives its own identity, SSH keys,
-and FreeIPA enrollment credentials.
+## Get started
 
-> **Development status:** source tests pass. Image builds, VM boots, and live
-> FreeIPA enrollment still need validation. A verified public IPA CA is required
-> before an image can be built. See [verification](docs/verification.md).
-
-## Start here
-
-| Task | Guide |
-| --- | --- |
-| Build the RAW image and installer ISO | [Building](docs/building.md) |
-| Understand image-size tradeoffs | [Footprint](docs/footprint.md) |
-| Install a machine and configure SSH access | [Installation](docs/installing.md) |
-| Configure trust and enroll in FreeIPA | [Identity](docs/identity.md) |
-| Understand the image layout and build flow | [Architecture](docs/architecture.md) |
-| Run checks and understand their limits | [Verification](docs/verification.md) |
-| Change the code or configuration | [Contributing](CONTRIBUTING.md) |
-
-## Check the source
-
-Source checks need Python 3.11+, OpenSSL, Bash, and Make. They do not need Docker,
-an IPA server, or a CA certificate.
+1. Clone the repository and run source checks.
+2. Independently verify the fingerprint of the checked-in public FreeIPA CA, or replace it with your own reviewed CA.
+3. Commit any configuration or trust changes.
+4. Build the images and run the disposable VM tests.
 
 ```sh
 git clone https://github.com/soft-cloud-dev/sc-linux.git
@@ -35,29 +17,55 @@ cd sc-linux
 make check
 ```
 
-To build images, follow [the build guide](docs/building.md): configure the real
-CA, commit the source, then run `make builder`, `make images`, and `make smoke`
-on an amd64 Linux host with Docker. Run `make help` to list commands.
+The build requires an **amd64 Linux** machine with Docker, Git, Make, OpenSSL and at least **40 GiB free**. It uses privileged containers. Follow [the build guide](docs/building.md) before running it.
 
-## Outputs
+## Learn and operate through notebooks
 
-All final outputs go to `build/output/` by default.
+Open [`notebooks/`](notebooks) in JupyterLab, starting Jupyter from the repository root:
 
-| File | Purpose |
+| Start here | What you will do |
 | --- | --- |
-| `sc-linux.raw.zst` | Compressed GPT disk image for direct deployment |
-| `sc-linux.iso` | UEFI installer containing the same disk image |
-| `SHA256SUMS`, `artifacts.json` | Artifact checksums and sizes |
-| `footprint.json` | RAW/ISO byte counts and top installed package sizes |
-| Manifests and metadata | Package versions, source commit, and builder identity |
-| `tests/` | Boot logs and results after a smoke-test run |
+| [01 · Validate](notebooks/01-validate.ipynb) | Check configuration and run tests |
+| [02 · Build](notebooks/02-build.ipynb) | Review inputs and generate RAW + ISO |
+| [03 · Inspect](notebooks/03-inspect.ipynb) | Verify hashes, compare sizes |
+| [04 · Smoke-test](notebooks/04-smoke.ipynb) | Boot test VMs and review evidence |
 
-## Scope
+The **actual host-side operations** also live in notebooks: [check](notebooks/check.ipynb), [trust](notebooks/trust.ipynb), [prepare](notebooks/prepare.ipynb), [make-iso](notebooks/make-iso.ipynb), [artifacts](notebooks/artifacts.ipynb), [footprint](notebooks/footprint.ipynb), [seed](notebooks/seed.ipynb), and [smoke](notebooks/smoke.ipynb).
 
-The server uses a writable ext4 root and DHCP networking. Provisioning uses
-per-host NoCloud media; enrollment uses the standard FreeIPA client's interactive
-one-time-password prompt. TPM measurements are diagnostic evidence.
+You **do not need Jupyter installed to use CI or the Makefile**. Execute any operation with the minimal, Python-standard-library runner:
 
-Secure Boot signing is optional. Remote attestation, an authenticated root,
-automatic updates, Kubernetes, and FreeBSD are outside this repository's scope.
-Read [the security boundaries](SECURITY.md) before deploying or distributing images.
+```sh
+bash scripts/notebook.sh notebooks/check.ipynb
+make check
+```
+
+The notebook is the executable source. The runner evaluates its Python cells in order; it does not execute Markdown or install dependencies. JupyterLab is an optional interface, not part of the deployed OS.
+
+## Open notebooks interactively
+
+JupyterLab is needed only when you want to **explore cells interactively**. Install it in a local development environment, not in the built OS:
+
+```sh
+python3 -m venv .venv
+. .venv/bin/activate
+python -m pip install jupyterlab
+make lab
+```
+
+Run `make lab`, then open `01-validate.ipynb`. This creates **working copies** of the notebooks in ignored `build/notebooks/`, so Jupyter autosave and execution outputs cannot dirty the committed source or block image builds. Repeated launches preserve these copies. To contribute changes, deliberately copy the edited notebook back into `notebooks/`, clear its cell outputs, and commit it. CI and command-line builds continue to use the committed notebooks through `make` and `scripts/notebook.sh`.
+
+## Build and test
+
+After configuring verified CA trust and committing your changes:
+
+```sh
+make builder
+make images
+make smoke
+```
+
+Expected outputs in `build/output/`: `sc-linux.raw.zst`, `sc-linux.iso`, `SHA256SUMS`, `artifacts.json`, `footprint.json`, package manifests, and VM logs after smoke testing.
+
+For a step-by-step explanation see [Build](docs/building.md), [Install](docs/installing.md), [Identity](docs/identity.md), [Architecture](docs/architecture.md), [Footprint](docs/footprint.md), and [Verification](docs/verification.md).
+
+**Scope:** UEFI, systemd, cloud-init NoCloud, SSH and native FreeIPA client. Signing is optional. The repository does **not** implement authenticated root, remote attestation, automatic updates, Kubernetes orchestration, or a FreeBSD image. Read [Security](SECURITY.md) before deploying.

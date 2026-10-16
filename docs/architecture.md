@@ -1,94 +1,61 @@
-# Architecture
+# How SC Linux works
 
-[README](../README.md) · [Build](building.md) · [Verify](verification.md)
+[Home](../README.md) · [Build](building.md) · [Verification](verification.md)
 
-## Repository map
+SC Linux keeps the *build environment* separate from the *installed operating system*.
 
-| Directory | Responsibility |
+## Repository layout
+
+| Path | Purpose |
 | --- | --- |
-| `config/` | Build snapshot, toolchain selection, and explicit IPA identity |
-| `images/server/` | Server mkosi recipe, partition definitions, finalizer, and overlay |
-| `images/installer/` | Installer mkosi recipe, console units, and disk installer |
-| `lib/scos/` | Shared validation and hashing, copied into both images |
-| `scripts/` | Host build, trust, seed, packaging, and smoke-test commands |
-| `tests/` | Source-level regression tests and shared test support |
-| `trust/` | Operator-provided public CA and verified fingerprint |
-| `docs/` | Operating guides, verification record, references, and change notes |
-| `build/` | Ignored generated inputs, builder metadata, images, and logs |
+| `notebooks/01-*` through `04-*` | Guided, interactive workflow |
+| `notebooks/*.ipynb` | Executable host-side validation, staging, image packaging and tests |
+| `scripts/notebook.sh` | Execute the same notebook code noninteractively in CI |
+| `scripts/*.sh` | Docker, mkosi and reproducibility orchestration |
+| `config/` | Version pins and FreeIPA identity |
+| `images/server/` | Server mkosi recipe, partition layout and system files |
+| `images/installer/` | Installer UKI recipe, units and disk installer |
+| `lib/scos/core.py` | Small **runtime** library used by installed commands |
+| `tests/` | Python unit tests for safety and compatibility |
+| `trust/` | Operator-reviewed public IPA CA certificate |
+| `build/` | Ignored images, metadata and VM logs |
 
-Each image overlay mirrors its destination filesystem. Shared code has one
-canonical location, `lib/scos/`, and is staged to `/usr/local/lib/scos/`.
-Installed commands import it as `scos.core`.
+**Why some .py files remain:** installed programs still use Python. A deployed node must not need Jupyter. Python unit tests also remain importable; host utility entrypoints moved to notebooks.
 
-## Build flow
+## The build sequence
 
-```mermaid
-flowchart TD
-    Inputs["Configuration, trust, and source"] --> Stage["Prepare overlays and apt sources"]
-    Stage --> Server["Build server RAW"]
-    Server --> Payload["Compress and hash payload"]
-    Stage --> Installer["Build installer UKI"]
-    Payload --> Installer
-    Installer --> ISO["Assemble UEFI ISO"]
-    Payload --> ISO
-    Server --> Tests["Boot clones and test installation"]
-    ISO --> Tests
+```text
+config + verified public CA
+        |
+  check.ipynb
+        |
+  prepare.ipynb  -> server/installer overlay and apt snapshot
+        |
+  mkosi server   -> sc-linux.raw
+        |               |
+      zstd          payload digests
+        |               |
+        +-------> mkosi installer -> UKI
+                            |
+                     make-iso.ipynb -> sc-linux.iso
+                            |
+                  artifacts / footprint notebooks
+                            |
+                     smoke.ipynb -> VM evidence
 ```
 
-`scripts/build.sh` requires a clean checkout and launches the pinned local
-builder with source mounted read-only. `build-inside.sh` copies source into
-container-local scratch space. `prepare.py` creates two overlays and a mkosi
-sandbox containing the selected apt sources.
+The source tree is mounted read-only into a privileged builder container, then copied into a temporary workspace. Metadata records the committed source revision and timestamp. The installer includes both the compressed RAW and expected payload digests.
 
-The server build produces the RAW disk. Its compressed and uncompressed hashes
-are embedded in the installer overlay before the installer UKI is built. The ISO
-contains an EFI boot image and that compressed payload. The installer checks
-both payload representations before opening the selected disk for writing.
+## What is on the server?
 
-## Server image
+Debian 13, systemd, UEFI UKI, a 384 MiB ESP, and a writable ext4 root with a **2 GiB minimum**. The actual RAW size depends on package footprint and mkosi partition minimization. `systemd-repart` is configured to grow the root on suitable targets, but that growth behavior still needs dedicated acceptance tests.
 
-The server recipe uses Debian packages, systemd, a UKI at the UEFI fallback boot
-path, and native FreeIPA client packages. The GPT layout has a 384 MiB EFI System Partition and a writable ext4
-root starting at 2 GiB, with `Minimize=guess` estimating required space.
-The installed `systemd-repart` policy targets expansion onto larger disks;
-its behavior still requires an image-build and VM-boot acceptance run.
+The server has DHCP networking, cloud-init NoCloud provisioning, SSH and FreeIPA client packages. The initial disk image does **not** contain a host keytab, SSH host private keys, or enrollment password.
 
-The finalizer registers CA trust, enables networking and provisioning units,
-locks root, clears machine-specific state, and checks the filesystem for secrets.
-It removes disposable caches, then exports package and filesystem-size reports
-into the build outputs rather than the deployed root.
-The deployed machine initializes its machine ID and SSH host keys independently.
+## What is on the ISO?
 
-Systemd-networkd manages matching Ethernet interfaces. Systemd-resolved provides
-DNS, systemd-timesyncd provides clock synchronization, and cloud-init accepts
-NoCloud provisioning. SSH password and root login are disabled.
+A minimal memory-resident UEFI installer plus the compressed server RAW. It starts an explicit installer console; there is **no automatic target disk selection**. The installer validates the disk and payload, demands confirmation, writes the image and reads it back.
 
-## Installer image
+## Security boundary
 
-The second recipe builds a memory-resident installer UKI. Its target starts an
-interactive root shell and never selects a disk automatically. `scos-install`
-verifies payloads, validates the whole-disk target, requires explicit confirmation,
-writes and reads back the image, then relocates the backup GPT header.
-
-The installer is an optical UEFI image. The server RAW is the direct disk artifact;
-the ISO is not a RAW image with a different extension.
-
-## Boot evidence
-
-On compatible UEFI/TPM hosts, `scos-measure` stores the firmware event log, parsed
-event log, selected SHA-256 PCR values, and a summary under `/run/scos/boot/`.
-It does not extend PCRs with post-boot file hashes.
-
-The boot smoke harness recognizes its `SCOS_BOOT_MEASURED` console marker and
-checks machine-ID uniqueness. It does not verify a hardware endorsement key,
-a remote quote, Secure Boot enforcement, or writable-root integrity.
-
-## Stable interfaces
-
-The rewrite retains `make check`, `builder`, `images`, `smoke`, and `repro`, the
-`scripts/` command paths, installed `scos-*` command names, and final artifact names.
-Bare `make` now displays command help; use `make check` to run validation.
-Source image paths moved from `mkosi/`, `overlay/`, and `installer/` into `images/`.
-See [the rewrite record](changes/2026-10-16-readability.md).
-
-See [upstream references](upstream.md) for the pinned interfaces.
+TPM measurements provide diagnostics, not a remote authorization verdict. Optional Secure Boot signing does not protect writable ext4 contents. FreeIPA enrollment is a separate manual action after each host is provisioned. See [Security](../SECURITY.md).

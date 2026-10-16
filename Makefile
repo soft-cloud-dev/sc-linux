@@ -1,11 +1,12 @@
 .DEFAULT_GOAL := help
-.PHONY: help check builder images smoke repro
+.PHONY: help check builder images smoke repro lab
 
 help:
 	@printf '%s\n' \
 	  'SC Linux image factory' \
 	  '' \
 	  '  make check    Run unit tests, source checks, and shell syntax checks' \
+	  '  make lab      Open JupyterLab working copies' \
 	  '  make builder  Build the pinned Docker toolchain' \
 	  '  make images   Build the RAW disk and UEFI installer ISO' \
 	  '  make smoke    Boot RAW clones, install the ISO, and boot the result' \
@@ -15,7 +16,7 @@ help:
 
 check:
 	python3 -m unittest discover -s tests -v
-	python3 scripts/check.py
+	bash scripts/notebook.sh notebooks/check.ipynb
 	@set -e; for script in scripts/*.sh; do bash -n "$$script"; done
 	sh -n images/server/mkosi.finalize.chroot
 	sh -n images/installer/mkosi.finalize.chroot
@@ -32,3 +33,6 @@ smoke:
 
 repro:
 	bash scripts/repro.sh
+
+lab:
+	bash scripts/lab.sh

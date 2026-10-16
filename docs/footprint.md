@@ -1,38 +1,12 @@
-# Image footprint
+# Understand image size
 
-[README](../README.md) · [Build](building.md) · [Verify](verification.md)
+[Home](../README.md) · [Build](building.md) · [Verification](verification.md)
 
-SC Linux builds an amd64 Debian 13 disk template and a UEFI installer ISO.
-Both are made from the same server image. The ISO carries the compressed RAW
-image, so reductions to the RAW's compressed payload usually affect the ISO
-too. The uncompressed disk size is not the installed package size.
+SC Linux records disk, installer and installed-package sizes after a successful build. The **uncompressed RAW file size is not the same as package size**.
 
-## Current size controls
+## Read the measurements
 
-| Control | Behavior |
-| --- | --- |
-| `WithRecommends=no` | Skip Debian recommended packages in both mkosi images |
-| `WithDocs=no` | Do not install optional package docs/man pages; preserve copyright files |
-| 384 MiB ESP | Fixed UEFI partition; must still fit the complete UKI |
-| 2 GiB root minimum | `Minimize=guess` measures space required for the copied root |
-| Repart policy | `systemd-repart` plus `/usr/lib/repart.d/50-root.conf` target first-boot growth |
-| Postinstall cleanup | Remove disposable apt lists/logs and Python bytecode, not SSSD runtime dependencies |
-| `zstd -T1 -19` | Compress the distributable RAW; single-threaded for deterministic parameters |
-
-The built root's exact size is data-dependent and can exceed 2 GiB.
-FreeIPA, SSSD, Kerberos, kernel modules, and required guest firmware are not
-arbitrarily removed. In particular, the kernel metapackage and native client
-packages are preserved.
-
-Do not run `zerofree` on a mounted ext4 filesystem, remove individual kernel
-modules without boot tests, or delete packaged Python modules/tests blindly.
-The reproducibility comparison must also pass after any filesystem-level
-rewriting. The installer tests check SHA-256 over the entire RAW payload.
-
-## Inspect a build
-
-Build only from a clean commit, as described in [building](building.md), then
-inspect the output files:
+Open [`03-inspect.ipynb`](../notebooks/03-inspect.ipynb), or read the raw report:
 
 ```sh
 cat build/output/footprint.json
@@ -41,30 +15,28 @@ cat build/output/raw/sc-linux.directories-bytes.tsv
 du -h build/output/raw/sc-linux.raw build/output/sc-linux.raw.zst build/output/sc-linux.iso
 ```
 
-`scripts/footprint.py` records uncompressed RAW bytes, compressed RAW bytes,
-ISO bytes, installer UKI bytes, compression ratio, and 30 largest packages.
-The guest package data comes from `dpkg-query` in the image finalization step.
-`Installed-Size` is an estimated package allocation in KiB, not a filesystem
-block count. The directory sizes are measured separately before the root
-filesystem and partition allocation are included.
+| Measurement | Meaning |
+| --- | --- |
+| Uncompressed RAW bytes | Whole GPT image: partitions, filesystems and unused space |
+| Compressed RAW bytes | zstd-compressed deployment payload |
+| ISO bytes | Installer boot files plus compressed RAW |
+| Package Installed-Size | Debian estimate in KiB, not actual filesystem blocks |
+| Directory bytes | Direct measurement in mkosi's root filesystem before disk layout |
 
-The separate `builder-packages.tsv` describes the Docker builder, not the
-packages on the deployed machine.
+The [`footprint.ipynb`](../notebooks/footprint.ipynb) operation creates the report; the guided inspection notebook verifies artifact hashes and presents its key numbers.
 
-## Acceptance requirements
+## Existing space-saving choices
 
-1. Confirm the RAW and ISO are built successfully from the pinned snapshot.
-2. Record the exact values in `footprint.json`; compare baseline and candidate.
-3. Run `make smoke` to boot the two RAW clones and install/boot from ISO.
-4. Independently verify the root partition and ext4 filesystem grow to fill
-   an 8 GiB installed disk, and that a subsequent reboot stays healthy.
-5. Run `make repro` for the exact unsigned candidate before declaring
-   byte-level reproducibility.
+The two mkosi definitions disable recommended packages and optional documentation. The ESP is **384 MiB**; the root has a **2 GiB minimum** and `Minimize=guess`. Build finalization removes temporary caches without deleting essential FreeIPA, SSSD, Kerberos, or kernel components. The distributable RAW uses `zstd -T1 -19`.
 
-The existing smoke suite does not yet assert disk growth. Build acceptance
-and growth remain unverified until explicitly tested. An ESP allocation
-change also requires verifying enough room for the generated and future UKI.
+These settings save space but are **not** proof that the resulting image is smaller or boots after each change.
 
-Compression level 19 is a tradeoff: it spends additional builder CPU time
-to reduce distribution bytes. Benchmark this against the baseline `-10`.
-Do not assume improvement without comparing actual artifact sizes and runtimes.
+## Compare a change properly
+
+1. Record baseline `footprint.json` values.
+2. Change one package, partition or compression parameter.
+3. Rebuild with a new clean output directory.
+4. Compare size and build-time results.
+5. Run VM smoke tests, root-growth checks, and unsigned reproducibility comparison when relevant.
+
+The existing smoke harness does **not** independently prove that ext4 expands on an 8 GiB target. Do not remove kernel modules, FreeIPA dependencies or packaged Python blindly.

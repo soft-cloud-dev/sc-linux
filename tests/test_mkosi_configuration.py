@@ -1,13 +1,10 @@
-import importlib.util
 from pathlib import Path
 import unittest
 
 
 ROOT = Path(__file__).resolve().parents[1]
-SPEC = importlib.util.spec_from_file_location("scos_check", ROOT / "scripts/check.py")
-assert SPEC is not None and SPEC.loader is not None
-CHECK = importlib.util.module_from_spec(SPEC)
-SPEC.loader.exec_module(CHECK)
+from support import load
+CHECK = load("scos_check", ROOT / "notebooks/check.ipynb")
 
 
 class MkosiPackagesTests(unittest.TestCase):

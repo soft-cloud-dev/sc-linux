@@ -1,10 +1,10 @@
-# Identity and trust
+# FreeIPA identity and certificate trust
 
-[README](../README.md) · [Build](building.md) · [Install](installing.md)
+[Home](../README.md) · [Build](building.md) · [Install](installing.md)
 
-## Configure the IPA environment
+## 1. Review your identity configuration
 
-[config/identity.json](../config/identity.json) is the single identity definition:
+[`config/identity.json`](../config/identity.json) defines the exact server, DNS domain and Kerberos realm:
 
 ```json
 {
@@ -14,76 +14,35 @@
 }
 ```
 
-The DNS domain and Kerberos realm are explicit. The code never derives a realm
-from DNS, the hostname, or the CA. Review these values for your deployment before
-building. A client hostname must be a lowercase FQDN below the configured domain
-and must differ from the IPA server name.
+Use lowercase fully qualified hostnames **below** this domain. Do not enroll a node using the IPA server's own hostname. DNS and Kerberos realm are independent explicit settings.
 
-## Establish CA trust
+## 2. Import only a verified public CA
 
-Obtain the actual public IPA CA and verify its DER SHA-256 fingerprint through
-an independent, trusted administrative channel. Then use `scripts/trust.py` as
-shown in the [build guide](building.md#1-configure-trust).
+The repository includes a public CA and fingerprint. Confirm that the **DER SHA-256** fingerprint matches the CA supplied by your FreeIPA administrator through an independent trusted channel. The following command replaces the checked-in CA when necessary:
 
-The helper accepts exactly one public CA certificate. It rejects a mismatched
-fingerprint, private-key material, a non-CA certificate, or a certificate outside
-its validity period. Review and commit:
+```sh
+bash scripts/notebook.sh notebooks/trust.ipynb /secure/path/ipa-ca.crt --sha256 VERIFIED_DER_SHA256
+make check
+git add trust/ipa-ca.crt trust/ipa-ca.sha256
+git commit -m "Update verified public IPA CA"
+```
 
-- `trust/ipa-ca.crt`: the public certificate.
-- `trust/ipa-ca.sha256`: its verified DER SHA-256 fingerprint.
+The notebook checks the fingerprint, CA constraint, validity period and absence of private-key material. Both committed files are public. Rotate the CA only through reviewed source changes and rebuilt images.
 
-The build stages the certificate at
-`/usr/local/share/ca-certificates/scos-ipa.crt` and registers it with
-`update-ca-certificates`. Enrollment checks its fingerprint and validity again.
-A CA rotation requires an independently verified source change and rebuilt images.
+## 3. Enroll a running host
 
-## Enroll a provisioned host
-
-Create the host and issue its one-time enrollment password through your existing
-IPA administration process. The operator or an external admission system decides
-whether the host is allowed to enroll.
-
-Connect using the bootstrap SSH key and run:
+Provision a unique hostname and SSH key first. Then obtain a **host-scoped, one-time enrollment password** through your existing IPA administration process.
 
 ```sh
 sudo scos-enroll node01.ipa.softcloud.dev
 ```
 
-The wrapper runs as root and serializes enrollment attempts. For a new enrollment it:
+The installed command checks CA trust, identity, hostname, DNS/time readiness and partial enrollment state before invoking `ipa-client-install` with the native interactive `-W` prompt. It verifies the expected host configuration afterward.
 
-1. Validates identity, the requested hostname, and CA trust.
-2. Rejects partial or foreign enrollment state.
-3. Requires an interactive terminal and a synchronized clock.
-4. Calls the native `ipa-client-install` with its `-W` password prompt.
-5. Verifies the expected host principal using the host keytab and checks SSSD configuration.
+The OTP must not be stored in Jupyter, environment variables, seed media or build scripts. A successful enrollment is **not** itself an authorization or attestation decision.
 
-Enter the **one-time host enrollment password**, not an IPA administrator password.
-Do not put it in command arguments, environment variables, seed media, or CI secrets.
-The enrollment process and root can still access that credential; the interactive
-prompt prevents exposure through arguments and shell history, not through a
-compromised operating system.
+## 4. Verify permissions in your real environment
 
-If IPA configuration already exists, the wrapper verifies the enrollment instead
-of forcing a rejoin. Reconcile incomplete or conflicting state with the IPA
-administrator before retrying.
+Test allowed and denied SSH access (HBAC), sudo permissions, keytab identity, offline handling and revocation against your actual IPA policy. Build-time checks cannot establish these outcomes.
 
-## Verify authorization separately
-
-A successful client installation does not prove your access policy. Test against
-the real server:
-
-- Allowed and denied SSH logins under HBAC policy.
-- Intended sudo permissions.
-- Offline behavior and credential revocation.
-- The expected host principal and unique host keytab.
-
-The image contains no enrollment password, administrator credential, host keytab,
-or pre-generated SSH host private key. Those unique secrets are created on the
-running host and persist there after enrollment.
-
-## Attestation boundary
-
-This repository has no admission broker and does not gate OTP issuance on a
-remote TPM verdict. Measured-boot diagnostics and optional EFI signing are
-separate controls. See [security boundaries](../SECURITY.md) and
-[verification limits](verification.md).
+**Not implemented:** automatic host admission, OTP brokering gated by TPM attestation, or a remote verifier.

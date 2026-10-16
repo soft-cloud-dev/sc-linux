@@ -44,7 +44,7 @@ class ImageSizeConfigurationTests(unittest.TestCase):
     def test_compression_and_report_generation(self):
         build = (ROOT / "scripts/build-inside.sh").read_text()
         self.assertIn("zstd -T1 -19 --no-progress", build)
-        self.assertIn("python3 scripts/footprint.py /out", build)
+        self.assertIn("bash scripts/notebook.sh notebooks/footprint.ipynb /out", build)
         self.assertTrue(
             (ROOT / "images/installer/mkosi.finalize.chroot").is_file()
         )

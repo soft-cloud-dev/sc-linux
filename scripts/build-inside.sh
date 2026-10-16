@@ -14,8 +14,8 @@ tar -C /src \
     tar -C "$work_directory" -xf -
 cd "$work_directory"
 
-python3 scripts/check.py --require-trust
-python3 scripts/prepare.py
+bash scripts/notebook.sh notebooks/check.ipynb --require-trust
+bash scripts/notebook.sh notebooks/prepare.ipynb
 partition_seed=$(python3 -c 'import json; print(json.load(open("config/build.json"))["seed"])')
 
 signing_arguments=()
@@ -59,11 +59,11 @@ mkosi -C images/installer \
     --source-date-epoch="$SOURCE_DATE_EPOCH" \
     "${signing_arguments[@]}" build
 test -s /out/installer/sc-linux-installer.efi
-python3 scripts/make-iso.py \
+bash scripts/notebook.sh notebooks/make-iso.ipynb \
     /out/installer/sc-linux-installer.efi /out/sc-linux.raw.zst /out/sc-linux.iso
 
-python3 scripts/artifacts.py /out
-python3 scripts/footprint.py /out
+bash scripts/notebook.sh notebooks/artifacts.ipynb /out
+bash scripts/notebook.sh notebooks/footprint.ipynb /out
 cp config/build.json /out/build-config.json
 dpkg-query -W -f='${binary:Package}\t${Version}\n' > /out/builder-packages.tsv
 printf '%s\n' "$SOURCE_COMMIT" > /out/source-commit.txt

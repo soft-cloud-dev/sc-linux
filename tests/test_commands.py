@@ -13,30 +13,30 @@ from support import ROOT, load
 class CommandTests(unittest.TestCase):
     def test_host_tools_can_be_imported_without_running_cli(self):
         for script in (
-            "check.py",
-            "artifacts.py",
-            "prepare.py",
-            "seed.py",
-            "trust.py",
-            "make-iso.py",
-            "smoke.py",
+            "check.ipynb",
+            "artifacts.ipynb",
+            "prepare.ipynb",
+            "seed.ipynb",
+            "trust.ipynb",
+            "make-iso.ipynb",
+            "smoke.ipynb",
         ):
             with self.subTest(script=script):
-                module = load(script.replace(".", "_"), ROOT / "scripts" / script)
+                module = load(script.replace(".", "_"), ROOT / "notebooks" / script)
                 self.assertTrue(callable(module.main))
 
     def test_public_cli_help_does_not_require_build_inputs(self):
         for script in (
-            "check.py",
-            "artifacts.py",
-            "seed.py",
-            "trust.py",
-            "make-iso.py",
-            "smoke.py",
+            "check.ipynb",
+            "artifacts.ipynb",
+            "seed.ipynb",
+            "trust.ipynb",
+            "make-iso.ipynb",
+            "smoke.ipynb",
         ):
             with self.subTest(script=script):
                 result = subprocess.run(
-                    [sys.executable, str(ROOT / "scripts" / script), "--help"],
+                    ["bash", "scripts/notebook.sh", str(ROOT / "notebooks" / script), "--help"],
                     capture_output=True,
                     text=True,
                 )
@@ -57,7 +57,7 @@ class CommandTests(unittest.TestCase):
                 installer.verify_readback(io.BytesIO(actual), expected)
 
     def test_boot_record_requires_unique_id_format_and_no_attestation_claim(self):
-        smoke = load("smoke_validation", ROOT / "scripts/smoke.py")
+        smoke = load("smoke_validation", ROOT / "notebooks/smoke.ipynb")
         self.assertTrue(callable(getattr(smoke, "validate_measurement", None)))
         valid = {"machine_id": "a" * 32, "authorization": "not-evaluated"}
         self.assertEqual(smoke.validate_measurement(valid), valid)
