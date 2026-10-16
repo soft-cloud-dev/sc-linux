@@ -1,4 +1,3 @@
-import importlib.util
 import json
 from pathlib import Path
 import subprocess
@@ -8,10 +7,8 @@ import unittest
 
 
 ROOT = Path(__file__).resolve().parents[1]
-SPEC = importlib.util.spec_from_file_location("scos_smoke", ROOT / "scripts/smoke.py")
-assert SPEC is not None and SPEC.loader is not None
-SMOKE = importlib.util.module_from_spec(SPEC)
-SPEC.loader.exec_module(SMOKE)
+from support import load
+SMOKE = load("scos_smoke", ROOT / "notebooks/smoke.ipynb")
 
 RECORD = {
     "boot_id": "a46bfc7b-5f41-4c06-8e72-1aad2e0caf13",

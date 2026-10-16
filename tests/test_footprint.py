@@ -10,7 +10,7 @@ from support import ROOT, load
 
 class FootprintTests(unittest.TestCase):
     def setUp(self):
-        self.module = load("footprint", ROOT / "scripts/footprint.py")
+        self.module = load("footprint", ROOT / "notebooks/footprint.ipynb")
 
     def test_artifact_sizes_and_largest_packages(self):
         with tempfile.TemporaryDirectory() as temp:

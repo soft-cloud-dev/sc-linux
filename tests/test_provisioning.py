@@ -7,7 +7,7 @@ from support import ROOT, load
 
 class ProvisioningTests(unittest.TestCase):
     def test_seed_contains_no_password_or_otp(self):
-        module = load("seed", ROOT / "scripts/seed.py")
+        module = load("seed", ROOT / "notebooks/seed.ipynb")
         self.assertIsNotNone(module, "Seed utility is missing")
         data = module.user_data(
             "node01.ipa.softcloud.dev", "ssh-ed25519 AAAATEST public-only"
@@ -58,7 +58,7 @@ class ProvisioningTests(unittest.TestCase):
             "images/server/mkosi.conf",
             "images/installer/mkosi.conf",
             "scripts/build-inside.sh",
-            "scripts/make-iso.py",
+            "notebooks/make-iso.ipynb",
         ):
             self.assertTrue((ROOT / path).is_file(), path + " is missing")
 

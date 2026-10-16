@@ -12,7 +12,7 @@ from support import ROOT, load
 
 class StagingTests(unittest.TestCase):
     def test_preparation_copies_both_overlays_and_shared_package(self):
-        prepare = load("prepare", ROOT / "scripts/prepare.py")
+        prepare = load("prepare", ROOT / "notebooks/prepare.ipynb")
         self.assertTrue(callable(getattr(prepare, "prepare", None)))
         with tempfile.TemporaryDirectory() as temporary:
             root = pathlib.Path(temporary)
