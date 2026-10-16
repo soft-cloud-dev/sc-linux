@@ -18,7 +18,7 @@ CHAPTERS = (
 class BookContractTests(unittest.TestCase):
     def test_project_toc_lists_every_chapter_in_order(self):
         toc = (ROOT / "myst.yml").read_text()
-        files = re.findall(r"^\\s+- file: ([^\\s#]+)", toc, flags=re.MULTILINE)
+        files = re.findall(r"^\s+- file: ([^\s#]+)", toc, flags=re.MULTILINE)
         expected = ["book/index.md", *[f"book/{n}.ipynb" for n in CHAPTERS], "book/appendix.md"]
         self.assertEqual(files, expected)
         for relative in files:
@@ -31,7 +31,7 @@ class BookContractTests(unittest.TestCase):
                 doc = json.loads(path.read_text())
                 self.assertEqual(doc["nbformat"], 4)
                 self.assertIn("skip-execution", doc.get("metadata", {}).get("tags", []))
-                markdown = "\\n".join(
+                markdown = "\n".join(
                     c["source"] if isinstance(c["source"], str) else "".join(c["source"])
                     for c in doc["cells"] if c["cell_type"] == "markdown"
                 )
@@ -59,7 +59,7 @@ class BookContractTests(unittest.TestCase):
                 ]
             else:
                 sources = [path.read_text()]
-            for link in re.findall(r"\\[[^\\]]+\\]\\(([^)]+)\\)", "\\n".join(sources)):
+            for link in re.findall(r"\[[^\]]+\]\(([^)]+)\)", "\n".join(sources)):
                 relative = link.split("#", 1)[0].split("?", 1)[0]
                 if not relative or "://" in relative or relative.startswith(("/", "mailto:")):
                     continue
