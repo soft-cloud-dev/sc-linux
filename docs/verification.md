@@ -39,6 +39,14 @@ hide the missing deployment trust.
 
 ## Image acceptance
 
+A size-optimized build additionally requires inspection of `footprint.json`,
+the size-ranked guest package list, and confirmation that the root filesystem
+can grow on the 8 GiB installer target. The existing smoke harness verifies
+boot and installation, but does not yet assert root partition/filesystem growth.
+Do not claim that disk-growth acceptance passed until that check has been added
+and executed against the exact images being evaluated.
+
+
 On a supported build host, `make smoke` is designed to:
 
 1. Boot two disposable RAW clones and collect guest boot evidence.

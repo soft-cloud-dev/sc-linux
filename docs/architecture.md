@@ -48,11 +48,15 @@ both payload representations before opening the selected disk for writing.
 ## Server image
 
 The server recipe uses Debian packages, systemd, a UKI at the UEFI fallback boot
-path, and native FreeIPA client packages. The GPT layout has a 512 MiB EFI System
-Partition and an approximately 4 GiB writable ext4 root.
+path, and native FreeIPA client packages. The GPT layout has a 384 MiB EFI System Partition and a writable ext4
+root starting at 2 GiB, with `Minimize=guess` estimating required space.
+The installed `systemd-repart` policy targets expansion onto larger disks;
+its behavior still requires an image-build and VM-boot acceptance run.
 
 The finalizer registers CA trust, enables networking and provisioning units,
 locks root, clears machine-specific state, and checks the filesystem for secrets.
+It removes disposable caches, then exports package and filesystem-size reports
+into the build outputs rather than the deployed root.
 The deployed machine initializes its machine ID and SSH host keys independently.
 
 Systemd-networkd manages matching Ethernet interfaces. Systemd-resolved provides

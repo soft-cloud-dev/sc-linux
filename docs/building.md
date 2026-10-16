@@ -64,12 +64,18 @@ Otherwise the next build will detect uncommitted artifacts and refuse to run.
 | `sc-linux.iso` | Installer UKI and compressed server payload |
 | `raw/sc-linux.raw` | Uncompressed template used by smoke tests |
 | `raw/`, `installer/` | mkosi output, including package manifests |
+| `raw/sc-linux.packages-kib.tsv` | Guest packages sorted by dpkg Installed-Size (KiB) |
+| `raw/sc-linux.directories-bytes.tsv` | Major guest directory sizes in bytes |
+| `footprint.json` | RAW/ISO sizes, compression savings, and top packages |
 | `SHA256SUMS`, `artifacts.json` | Final artifact hashes and sizes |
 | `payload.json` | Expected compressed and uncompressed payload hashes |
 | `build-config.json` | Build configuration |
 | `builder.id`, `builder-base.txt`, `builder-packages.tsv` | Builder provenance |
 | `source-commit.txt`, `source-date-epoch.txt` | Source revision and timestamp |
 | `tests/` | Smoke logs and `smoke.json` after a successful run |
+
+Run `make images` before inspecting guest sizes. See the [footprint guide](footprint.md)
+for measurements, limits, and optimization acceptance criteria.
 
 Checksums detect corruption. They do not authenticate a download when an attacker
 can replace both the images and their checksum file.
