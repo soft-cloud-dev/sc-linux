@@ -38,7 +38,7 @@ class NotebookContractTests(unittest.TestCase):
                         self.assertEqual(cell["outputs"], [])
 
     def test_no_old_python_entrypoints_in_build_shell(self):
-        for name in ("Makefile", "scripts/build-inside.sh", "scripts/smoke.sh"):
+        for name in ("Makefile", "scripts/build.sh", "scripts/build-inside.sh", "scripts/smoke.sh"):
             with self.subTest(file=name):
                 source = (ROOT / name).read_text()
                 self.assertNotIn("python3 scripts/", source)
