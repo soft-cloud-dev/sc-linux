@@ -1,0 +1,21 @@
+name: Jupyter Book
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  book:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          persist-credentials: false
+      - name: Install pinned Jupyter Book
+        run: |
+          python3 -m venv .venv
+          .venv/bin/python -m pip install --disable-pip-version-check -r requirements-book.txt
+      - name: Build the static book without execution
+        run: .venv/bin/jupyter book build --html --strict

@@ -1,5 +1,7 @@
 # Build your first image
 
+For an interactive, chapter-by-chapter explanation of the complete image factory, use the [SC Linux Jupyter Book](../book/index.md). The book separates environment checks, version pins, trust, filesystem staging, mkosi image construction, packaging, checksum verification and VM testing. The actual CI image pipeline remains the canonical source of build behavior.
+
 [Home](../README.md) · [Install](installing.md) · [Verification](verification.md)
 
 This guide builds **two files from one server definition**: a compressed RAW disk for a hypervisor, and an ISO that installs the same disk image.

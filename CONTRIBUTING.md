@@ -7,7 +7,8 @@
 | Change | Edit |
 | --- | --- |
 | A build or verification operation | `notebooks/<operation>.ipynb` |
-| Explanation or tutorial | `notebooks/01-*` to `04-*` or `docs/` |
+| Guided OS-building chapters | `book/*.ipynb` and `book/*.md` |
+| Compact operational notebooks | `notebooks/01-*` to `04-*` |
 | Docker or mkosi orchestration | `scripts/*.sh`, `Dockerfile` |
 | OS packages, boot settings or partition layout | `images/*/mkosi.conf` and `mkosi.repart/` |
 | Files installed in the OS | `images/*/overlay/` |
@@ -16,7 +17,9 @@
 
 The notebooks are the **canonical host-side Python sources**, not copies of `scripts/*.py`. The runner in `scripts/notebook.sh` executes them without Jupyter, so the exact notebook cells are used in CI.
 
-Run interactive notebooks with `make lab`. It creates working copies in ignored `build/notebooks/` so execution counters and saved outputs never dirty the committed source. To contribute, copy reviewed edits back into `notebooks/`, clear cell outputs, and commit the canonical version.
+Run canonical operational notebooks with `make lab`; run Jupyter Book chapters with `make book-lab` (ignored working copies). Render the book with `make book-html` without notebook execution.
+
+Run interactive operational notebooks with `make lab`. It creates working copies in ignored `build/notebooks/` so execution counters and saved outputs never dirty the committed source. To contribute, copy reviewed edits back into `notebooks/`, clear cell outputs, and commit the canonical version.
 
 Keep each notebook easy to read from top to bottom: goal, prerequisites, visible arguments, focused cells, and checks. Put import-safe helpers before the final guarded command cell. Do not commit generated outputs, secrets, private keys, kernel traces, or host credentials. Avoid hidden notebook state and unreviewed network access.
 

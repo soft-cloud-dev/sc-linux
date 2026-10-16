@@ -1,5 +1,6 @@
 /build/
 /dist/
+/_build/
 .venv/
 .ipynb_checkpoints/
 **/.ipynb_checkpoints/
